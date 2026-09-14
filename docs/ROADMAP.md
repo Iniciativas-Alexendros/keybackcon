@@ -6,5 +6,6 @@
 - [x] Empaquetado en repo: metadata `cargo-deb`, `PKGBUILD` de AUR y release con `.deb` + SBOM + attestation
 - [ ] Publicar `.deb` en GitHub Releases (el workflow ya lo construye al empujar el tag)
 - [ ] Publicar en AUR (regenerar `sha256sums` con `updpkgsums` y generar `.SRCINFO` antes del push)
+- [ ] Icono en la barra superior de GNOME (indicador Ayatana): verificar visible junto al resto de iconos con la extensión AppIndicator
 - [ ] Detección multi-zona si aparece firmware con `LampCount > 1`
 - [ ] Modo "seguir escritorio" (leer acento GTK y aplicarlo) — solo si se pide

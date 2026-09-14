@@ -14,7 +14,10 @@ mkdir -p "${BIN_DST}"
 install -m755 "${REPO_DIR}/target/release/keybackcon" "${BIN_DST}/keybackcon"
 
 echo "==> keybackcon: instalar GUI en ${BIN_DST}/keybackcon-gui"
-install -m755 "${REPO_DIR}/gui/control_panel.py" "${BIN_DST}/keybackcon-gui"
+GUI_DST="${HOME}/.local/share/keybackcon/gui"
+mkdir -p "${GUI_DST}"
+install -m644 "${REPO_DIR}"/gui/*.py "${GUI_DST}/"
+install -m755 "${REPO_DIR}/packaging/keybackcon-gui" "${BIN_DST}/keybackcon-gui"
 
 echo "==> keybackcon: compilar traducciones (es)"
 MO_SRC="${REPO_DIR}/po/es.po"
@@ -68,7 +71,9 @@ if command -v systemctl >/dev/null 2>&1; then
   systemctl --user enable keybackcon.service || true
 fi
 
-if [ -f /etc/udev/rules.d/70-keybackcon.rules ]; then
+if [ "${KEYBACKCON_SKIP_UDEV:-0}" = "1" ]; then
+  echo "==> keybackcon: regla udev omitida (KEYBACKCON_SKIP_UDEV=1)"
+elif [ -f /etc/udev/rules.d/70-keybackcon.rules ]; then
   echo "==> keybackcon: regla udev ya presente, nada que hacer"
 else
   echo "==> keybackcon: instalar regla udev (pide sudo)"
