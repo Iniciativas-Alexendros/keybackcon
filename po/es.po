@@ -1,0 +1,194 @@
+# Spanish translation for keybackcon.
+# Copyright (C) 2026 keybackcon contributors
+# This file is distributed under the same license as the keybackcon package.
+msgid ""
+msgstr ""
+"Project-Id-Version: keybackcon 2.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-14 00:00+0000\n"
+"PO-Revision-Date: 2026-09-14 00:00+0000\n"
+"Last-Translator: keybackcon <keybackcon@local>\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: gui/control_panel.py:14
+msgid "Keyboard Backlight Controls"
+msgstr "Keyboard Backlight Controls"
+
+#: gui/control_panel.py:282
+msgid "Fija tu luz en dos toques"
+msgstr "Fija tu luz en dos toques"
+
+#: gui/control_panel.py:289
+msgid "Lo que ves arriba es lo que brilla abajo: elige color, ajusta intensidad y listo."
+msgstr "Lo que ves arriba es lo que brilla abajo: elige color, ajusta intensidad y listo."
+
+#: gui/control_panel.py:310
+msgid "Elige tu luz"
+msgstr "Elige tu luz"
+
+#: gui/control_panel.py:310
+msgid "Toca un filtro o crea tu propio tono."
+msgstr "Toca un filtro o crea tu propio tono."
+
+#: gui/control_panel.py:52
+msgid "Blanco"
+msgstr "Blanco"
+
+#: gui/control_panel.py:53
+msgid "Tungsteno"
+msgstr "Tungsteno"
+
+#: gui/control_panel.py:54
+msgid "Naranja"
+msgstr "Naranja"
+
+#: gui/control_panel.py:55
+msgid "Rojo"
+msgstr "Rojo"
+
+#: gui/control_panel.py:56
+msgid "Rosa"
+msgstr "Rosa"
+
+#: gui/control_panel.py:57
+msgid "Púrpura"
+msgstr "Púrpura"
+
+#: gui/control_panel.py:58
+msgid "Ultravioleta"
+msgstr "Ultravioleta"
+
+#: gui/control_panel.py:59
+msgid "Azul"
+msgstr "Azul"
+
+#: gui/control_panel.py:60
+msgid "Cian"
+msgstr "Cian"
+
+#: gui/control_panel.py:61
+msgid "Verde"
+msgstr "Verde"
+
+#: gui/control_panel.py:62
+msgid "Apagado"
+msgstr "Apagado"
+
+#: gui/control_panel.py:340
+msgid "Tu tono:"
+msgstr "Tu tono:"
+
+#: gui/control_panel.py:469
+msgid "Tu tono"
+msgstr "Tu tono"
+
+#: gui/control_panel.py:352
+msgid "Cuánta luz quieres"
+msgstr "Cuánta luz quieres"
+
+#: gui/control_panel.py:352
+msgid "Desliza o usa − / + . Se guarda solo."
+msgstr "Desliza o usa − / + . Se guarda solo."
+
+#: gui/control_panel.py:377
+msgid "Cómo se mueve"
+msgstr "Cómo se mueve"
+
+#: gui/control_panel.py:377
+msgid "Fija la luz o déjala respirar."
+msgstr "Fija la luz o déjala respirar."
+
+#: gui/control_panel.py:383
+msgid "Fijar"
+msgstr "Fijar"
+
+#: gui/control_panel.py:384
+msgid "Respirar"
+msgstr "Respirar"
+
+#: gui/control_panel.py:385
+msgid "Arcoíris"
+msgstr "Arcoíris"
+
+#: gui/control_panel.py:395
+msgid "Parar movimiento"
+msgstr "Parar movimiento"
+
+#: gui/control_panel.py:400
+msgid "Qué está pasando"
+msgstr "Qué está pasando"
+
+#: gui/control_panel.py:400
+msgid "Estado vivo del teclado."
+msgstr "Estado vivo del teclado."
+
+#: gui/control_panel.py:402
+msgid "mirando el teclado…"
+msgstr "mirando el teclado…"
+
+#: gui/control_panel.py:533
+msgid "luz fija"
+msgstr "luz fija"
+
+#: gui/control_panel.py:528
+#, python-brace-format
+msgid "moviéndose (pid {pid})"
+msgstr "moviéndose (pid {pid})"
+
+#: gui/control_panel.py:539
+msgid "sin teclado a la vista"
+msgstr "sin teclado a la vista"
+
+#: gui/control_panel.py:537
+msgid "zona(s)"
+msgstr "zona(s)"
+
+#: gui/control_panel.py:453
+msgid "Algo no salió"
+msgstr "Algo no salió"
+
+#: gui/control_panel.py:454
+msgid "Entendido"
+msgstr "Entendido"
+
+#: gui/control_panel.py:445
+#, python-brace-format
+msgid "No encuentro el binario ({BIN}). Instálalo primero."
+msgstr "No encuentro el binario ({BIN}). Instálalo primero."
+
+#: gui/control_panel.py:613
+#, python-brace-format
+msgid "No encuentro el binario ({BIN})."
+msgstr "No encuentro el binario ({BIN})."
+
+#: gui/control_panel.py:447
+#, python-brace-format
+msgid "El teclado no respondió: {e}"
+msgstr "El teclado no respondió: {e}"
+
+#: gui/control_panel.py:449
+msgid "El teclado tardó demasiado en responder."
+msgstr "El teclado tardó demasiado en responder."
+
+#: gui/control_panel.py:546
+#, python-brace-format
+msgid "{nombre} aplicado"
+msgstr "{nombre} aplicado"
+
+#: gui/control_panel.py:556
+#, python-brace-format
+msgid "Tu tono #{hexv} aplicado"
+msgstr "Tu tono #{hexv} aplicado"
+
+#: gui/control_panel.py:611
+#, python-brace-format
+msgid "Movimiento {mode} en marcha"
+msgstr "Movimiento {mode} en marcha"
+
+#: gui/control_panel.py:631
+msgid "Luz fijada de nuevo"
+msgstr "Luz fijada de nuevo"

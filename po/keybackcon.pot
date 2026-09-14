@@ -1,0 +1,193 @@
+# keybackcon translation template.
+# Copyright (C) 2026 keybackcon contributors
+# This file is distributed under the same license as the keybackcon package.
+msgid ""
+msgstr ""
+"Project-Id-Version: keybackcon 2.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-14 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Spanish\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: gui/control_panel.py:14
+msgid "Keyboard Backlight Controls"
+msgstr ""
+
+#: gui/control_panel.py:282
+msgid "Fija tu luz en dos toques"
+msgstr ""
+
+#: gui/control_panel.py:289
+msgid "Lo que ves arriba es lo que brilla abajo: elige color, ajusta intensidad y listo."
+msgstr ""
+
+#: gui/control_panel.py:310
+msgid "Elige tu luz"
+msgstr ""
+
+#: gui/control_panel.py:310
+msgid "Toca un filtro o crea tu propio tono."
+msgstr ""
+
+#: gui/control_panel.py:52
+msgid "Blanco"
+msgstr ""
+
+#: gui/control_panel.py:53
+msgid "Tungsteno"
+msgstr ""
+
+#: gui/control_panel.py:54
+msgid "Naranja"
+msgstr ""
+
+#: gui/control_panel.py:55
+msgid "Rojo"
+msgstr ""
+
+#: gui/control_panel.py:56
+msgid "Rosa"
+msgstr ""
+
+#: gui/control_panel.py:57
+msgid "Púrpura"
+msgstr ""
+
+#: gui/control_panel.py:58
+msgid "Ultravioleta"
+msgstr ""
+
+#: gui/control_panel.py:59
+msgid "Azul"
+msgstr ""
+
+#: gui/control_panel.py:60
+msgid "Cian"
+msgstr ""
+
+#: gui/control_panel.py:61
+msgid "Verde"
+msgstr ""
+
+#: gui/control_panel.py:62
+msgid "Apagado"
+msgstr ""
+
+#: gui/control_panel.py:340
+msgid "Tu tono:"
+msgstr ""
+
+#: gui/control_panel.py:469
+msgid "Tu tono"
+msgstr ""
+
+#: gui/control_panel.py:352
+msgid "Cuánta luz quieres"
+msgstr ""
+
+#: gui/control_panel.py:352
+msgid "Desliza o usa − / + . Se guarda solo."
+msgstr ""
+
+#: gui/control_panel.py:377
+msgid "Cómo se mueve"
+msgstr ""
+
+#: gui/control_panel.py:377
+msgid "Fija la luz o déjala respirar."
+msgstr ""
+
+#: gui/control_panel.py:383
+msgid "Fijar"
+msgstr ""
+
+#: gui/control_panel.py:384
+msgid "Respirar"
+msgstr ""
+
+#: gui/control_panel.py:385
+msgid "Arcoíris"
+msgstr ""
+
+#: gui/control_panel.py:395
+msgid "Parar movimiento"
+msgstr ""
+
+#: gui/control_panel.py:400
+msgid "Qué está pasando"
+msgstr ""
+
+#: gui/control_panel.py:400
+msgid "Estado vivo del teclado."
+msgstr ""
+
+#: gui/control_panel.py:402
+msgid "mirando el teclado…"
+msgstr ""
+
+#: gui/control_panel.py:533
+msgid "luz fija"
+msgstr ""
+
+#: gui/control_panel.py:528
+#, python-brace-format
+msgid "moviéndose (pid {pid})"
+msgstr ""
+
+#: gui/control_panel.py:539
+msgid "sin teclado a la vista"
+msgstr ""
+
+#: gui/control_panel.py:537
+msgid "zona(s)"
+msgstr ""
+
+#: gui/control_panel.py:453
+msgid "Algo no salió"
+msgstr ""
+
+#: gui/control_panel.py:454
+msgid "Entendido"
+msgstr ""
+
+#: gui/control_panel.py:445
+#, python-brace-format
+msgid "No encuentro el binario ({BIN}). Instálalo primero."
+msgstr ""
+
+#: gui/control_panel.py:613
+#, python-brace-format
+msgid "No encuentro el binario ({BIN})."
+msgstr ""
+
+#: gui/control_panel.py:447
+#, python-brace-format
+msgid "El teclado no respondió: {e}"
+msgstr ""
+
+#: gui/control_panel.py:449
+msgid "El teclado tardó demasiado en responder."
+msgstr ""
+
+#: gui/control_panel.py:546
+#, python-brace-format
+msgid "{nombre} aplicado"
+msgstr ""
+
+#: gui/control_panel.py:556
+#, python-brace-format
+msgid "Tu tono #{hexv} aplicado"
+msgstr ""
+
+#: gui/control_panel.py:611
+#, python-brace-format
+msgid "Movimiento {mode} en marcha"
+msgstr ""
+
+#: gui/control_panel.py:631
+msgid "Luz fijada de nuevo"
+msgstr ""
