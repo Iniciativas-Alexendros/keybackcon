@@ -2,7 +2,7 @@
 
 La fuente de verdad son los tags y `git-cliff`. Resumen:
 
-## [2.2.0] — sin publicar
+## [2.2.0] — 2026-09-14
 - Comando `restore`: detiene animación y reaplica color+brillo guardados;
   el servicio de usuario lo ejecuta al iniciar sesión para restaurar el color.
 - Lanzador GUI por paquete (`packaging/keybackcon-gui`): localiza `gui/` y lo

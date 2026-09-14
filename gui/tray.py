@@ -49,7 +49,7 @@ except Exception as exc:
 
 
 MODES = ("fijar", "breathe", "rainbow", "off")
-BRIGHT_STEP = 5
+LEVEL_STEP = 1
 
 
 def _normalize_hex(color_hex):
@@ -231,12 +231,12 @@ class TrayIndicator:
         menu.append(Gtk.SeparatorMenuItem())
         self._bright_up_item = Gtk.MenuItem.new_with_label(_("Subir brillo"))
         self._bright_up_item.connect(
-            "activate", lambda *a: self._do_brightness(BRIGHT_STEP)
+            "activate", lambda *a: self._do_brightness(LEVEL_STEP)
         )
         menu.append(self._bright_up_item)
         self._bright_down_item = Gtk.MenuItem.new_with_label(_("Bajar brillo"))
         self._bright_down_item.connect(
-            "activate", lambda *a: self._do_brightness(-BRIGHT_STEP)
+            "activate", lambda *a: self._do_brightness(-LEVEL_STEP)
         )
         menu.append(self._bright_down_item)
         menu.append(Gtk.SeparatorMenuItem())
