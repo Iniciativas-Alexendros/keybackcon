@@ -1,12 +1,12 @@
 # Desarrollo
 
 ```sh
-cargo test -- --test-threads=1   # 24 tests (los de pid usan XDG_RUNTIME_DIR temporal)
+cargo test -- --test-threads=1   # 25 tests (los de pid usan XDG_RUNTIME_DIR temporal)
 cargo clippy --all-targets -- -D warnings
 cargo fmt --check
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 ./scripts/smoke.sh               # binario + GUI + packaging
-python3 -m py_compile gui/control_panel.py
+python3 -m py_compile gui/*.py
 ./scripts/install.sh             # instala en ~/.local + udev (sudo) + unidades de usuario
 ```
 

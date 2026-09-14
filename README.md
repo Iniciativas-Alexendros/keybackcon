@@ -59,7 +59,9 @@ Sin script:
 ```sh
 cargo build --release
 install -m755 target/release/keybackcon ~/.local/bin/keybackcon
-install -m755 gui/control_panel.py ~/.local/bin/keybackcon-gui
+mkdir -p ~/.local/share/keybackcon/gui
+install -m644 gui/*.py ~/.local/share/keybackcon/gui/
+install -m755 packaging/keybackcon-gui ~/.local/bin/keybackcon-gui
 sudo install -m644 packaging/udev/70-keybackcon.rules /etc/udev/rules.d/
 sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw
 ```
@@ -78,6 +80,7 @@ keybackcon off                     # apaga (conserva tu color)
 keybackcon firmware-effects off    # cede el control al programa (alias: auto)
 keybackcon animation breathe       # o rainbow, --fps N  (alias: anim)
 keybackcon stop                    # para y restaura tu color
+keybackcon restore                 # reaplica tu color guardado (p. ej. al iniciar sesión)
 keybackcon-gui                     # mesa de luz gráfica
 ```
 
