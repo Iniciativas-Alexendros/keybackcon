@@ -7,117 +7,69 @@
 ![License](https://img.shields.io/badge/licencia-MIT-green)
 
 Fija la luz de tu teclado **AERO X16** en dos toques: elige color, ajusta
-intensidad y listo. CLI en Rust sin dependencias (habla HID LampArray
-directo) + mesa de luz GTK4 con vista previa fiel.
+intensidad y listo. Desde terminal o con mesa de luz gráfica, todo en castellano.
 
 <p align="center">
   <img src="assets/screenshots/window-dark.png" width="300" alt="Mesa de luz en tema oscuro">
-  <img src="assets/screenshots/window-light.png" width="300" alt="Mesa de luz en tema claro">
+  <img src="assets/demo.gif" alt="Demostración: fijar color y animación">
 </p>
 
-La GUI vive también en la **bandeja del sistema** (`keybackcon-gui --tray`):
-sigue al tema claro/oscuro de tu escritorio, muestra cada filtro con su
-color real y previsualiza los movimientos (fijar, respirar, arcoíris) con
-efectos. Todo en castellano.
+La mesa de luz vive también en la **bandeja del sistema**
+(`keybackcon-gui --tray`) y sigue el tema claro/oscuro de tu escritorio.
+
+## Empieza en 3 pasos
+
+1. Instala el `.deb` (ver abajo; en Arch: `yay -S keybackcon`).
+2. Fija un color: `keybackcon set ff7800`.
+3. Abre la mesa de luz: `keybackcon-gui`.
 
 ## Instalación
 
-### Debian / Ubuntu (`.deb`)
+1. **Ubuntu/Debian (recomendado, `.deb`):** descarga el `.deb` de cada
+   [release](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
+   e instala con `sudo apt install ./keybackcon_X.Y.Z-1_amd64.deb`
+   (binario, GUI, icono, regla udev y unidades de usuario).
+2. **Arch Linux (AUR):** `yay -S keybackcon` (o `paru -S keybackcon`).
+3. **Script local (`~/.local`):** `./scripts/install.sh`
+   (pide sudo una vez para la regla udev).
 
-_Disponible cuando se publique un release con el paquete adjunto._
-
-Cada [release](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
-publica `keybackcon_X.Y.Z-1_amd64.deb` (construido con `cargo-deb`):
-
-```sh
-sudo apt install ./keybackcon_X.Y.Z-1_amd64.deb
-```
-
-Instala binario, GUI (`keybackcon-gui`), lanzador, icono, regla udev y
-unidades de usuario; recomienda `python3-gi`, `gir1.2-gtk-4.0` y
-`gir1.2-adw-1` para la GUI.
-
-### Arch Linux (AUR)
-
-_Disponible cuando se publique el paquete en AUR_ (el `PKGBUILD` ya vive en
-`packaging/aur/`):
-
-```sh
-yay -S keybackcon   # o paru -S keybackcon
-```
-
-### Script local (`~/.local`)
-
-```sh
-./scripts/install.sh
-# instala keybackcon + keybackcon-gui en ~/.local/bin,
-# regla udev (pide sudo una vez), unidades de usuario y lanzador
-```
-
-Sin script:
-
-```sh
-cargo build --release
-install -m755 target/release/keybackcon ~/.local/bin/keybackcon
-mkdir -p ~/.local/share/keybackcon/gui
-install -m644 gui/*.py ~/.local/share/keybackcon/gui/
-install -m755 packaging/keybackcon-gui ~/.local/bin/keybackcon-gui
-sudo install -m644 packaging/udev/70-keybackcon.rules /etc/udev/rules.d/
-sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw
-```
-
-Descarga directa: cada release trae el tarball
-`keybackcon-vX.Y.Z-linux-x86_64.tar.gz` (binario, GUI y packaging),
-`SHA256SUMS` y el SBOM CycloneDX.
+Cada release trae además el tarball `keybackcon-vX.Y.Z-linux-x86_64.tar.gz`,
+`SHA256SUMS` y SBOM CycloneDX.
 
 ## Uso
 
-```sh
-keybackcon info                    # dispositivo, nº de lámparas, estado
-keybackcon set ff7800              # hex, #hex o predefinido (red green blue cyan magenta yellow orange purple pink white off)
-keybackcon brightness 60           # o +10 / -10  (alias: bright)
-keybackcon off                     # apaga (conserva tu color)
-keybackcon firmware-effects off    # cede el control al programa (alias: auto)
-keybackcon animation breathe       # o rainbow, --fps N  (alias: anim)
-keybackcon stop                    # para y restaura tu color
-keybackcon restore                 # reaplica tu color guardado (p. ej. al iniciar sesión)
-keybackcon-gui                     # mesa de luz gráfica
-```
+| Comando | Efecto |
+|---|---|
+| `keybackcon set ff7800` | Fija color (hex, `#hex` o nombre: red, blue, orange…) |
+| `keybackcon brightness 60` | Ajusta intensidad (o `+10` / `-10`) |
+| `keybackcon animation breathe` | Anima (`breathe` o `rainbow`); `stop` la para |
+| `keybackcon off` | Apaga (conserva tu color) |
+| `keybackcon restore` | Reaplica tu color guardado (p. ej. al iniciar sesión) |
+| `keybackcon info` | Muestra dispositivo y estado |
+| `keybackcon-gui --tray` | Mesa de luz (solo bandeja con `--tray`) |
 
 Atajos de la GUI: `Ctrl+1…9` cambia de filtro, `+`/`−` ajusta intensidad.
 
 ## Cómo funciona
 
-- USB HID LampArray (Usage Page `0x59`), una zona (`LampCount=1`).
-- El firmware no trae canal de brillo: `brightness` escala tu RGB y lo
-  guarda (`~/.local/state/keybackcon/state`). Detalles en
-  [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
-- Una sola animación a la vez (pidfile validado en
-  `$XDG_RUNTIME_DIR/keybackcon/animation.pid`); cualquier `set/off/
-  brightness` la detiene primero para que el teclado nunca se vuelva loco.
-- Si vienes de `kbd-rgb`, tu color y brillo migran solos. Ver
-  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y
-  [`docs/DECISIONS.md`](docs/DECISIONS.md).
+- Habla directamente con el teclado por USB: sin demonios ni servicios en medio.
+- Tu color y brillo se guardan y sobreviven a reinicios y animaciones.
+- Solo hay una animación a la vez: cambiar el color la detiene antes.
+
+Detalle técnico (HID LampArray, informes, estado): [`docs/PROTOCOL.md`](docs/PROTOCOL.md),
+diseño en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y decisiones en [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Problemas típicos
 
 | Síntoma | Qué hacer |
 |---|---|
-| `no se encontró el dispositivo LampArray` | Revisa que el teclado esté conectado y la regla udev: `ls /dev/hidraw*`, `keybackcon info` |
-| Permiso denegado en `/dev/hidraw*` | Reaplica udev (`sudo udevadm trigger`) y **vuelve a iniciar sesión** (uaccess) |
-| La animación no para | `keybackcon stop`; si persiste, `systemctl --user stop 'keybackcon-animation@*'` |
-| La GUI no encuentra el binario | `~/.local/bin` debe estar en tu `PATH` |
+| No encuentra el teclado | Revisa la conexión y prueba `keybackcon info` |
+| Permiso denegado en `/dev/hidraw*` | `sudo udevadm trigger` y **vuelve a iniciar sesión** |
+| La animación no para | `keybackcon stop` |
 
 ## Desarrollo
 
-```sh
-cargo test -- --test-threads=1
-cargo clippy -- -D warnings
-cargo fmt --check
-./scripts/smoke.sh
-```
-
-Versión en `Cargo.toml`, tags `vX.Y.Z`, changelog con `git-cliff`.
-Más en [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+¿Quieres compilar o contribuir? Todo está en [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+Índice de documentos: [`docs/INDEX.md`](docs/INDEX.md).
 
 Licencia MIT — ver [`LICENSE`](LICENSE).
