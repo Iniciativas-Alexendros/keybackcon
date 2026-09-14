@@ -12,6 +12,32 @@ directo) + mesa de luz GTK4 con vista previa fiel.
 
 ## Instalación
 
+### Debian / Ubuntu (`.deb`)
+
+_Disponible cuando se publique un release con el paquete adjunto._
+
+Cada [release](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
+publica `keybackcon_X.Y.Z-1_amd64.deb` (construido con `cargo-deb`):
+
+```sh
+sudo apt install ./keybackcon_X.Y.Z-1_amd64.deb
+```
+
+Instala binario, GUI (`keybackcon-gui`), lanzador, icono, regla udev y
+unidades de usuario; recomienda `python3-gi`, `gir1.2-gtk-4.0` y
+`gir1.2-adw-1` para la GUI.
+
+### Arch Linux (AUR)
+
+_Disponible cuando se publique el paquete en AUR_ (el `PKGBUILD` ya vive en
+`packaging/aur/`):
+
+```sh
+yay -S keybackcon   # o paru -S keybackcon
+```
+
+### Script local (`~/.local`)
+
 ```sh
 ./scripts/install.sh
 # instala keybackcon + keybackcon-gui en ~/.local/bin,
@@ -28,8 +54,9 @@ sudo install -m644 packaging/udev/70-keybackcon.rules /etc/udev/rules.d/
 sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw
 ```
 
-Descarga directa: cada [release](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
-trae `keybackcon-vX.Y.Z-linux-x86_64.tar.gz` con binario, GUI y packaging.
+Descarga directa: cada release trae el tarball
+`keybackcon-vX.Y.Z-linux-x86_64.tar.gz` (binario, GUI y packaging),
+`SHA256SUMS` y el SBOM CycloneDX.
 
 ## Uso
 

@@ -2,7 +2,10 @@
 
 USB HID Usage Tables v1.4, §26 "Lighting And Illumination Page"
 (Usage Page `0x59`). Sin ingeniería inversa: el firmware expone un
-LampArray estándar.
+LampArray estándar. La fuente única de los valores concretos (firma, IDs,
+longitudes, offsets, bytes y codificación ioctl) en el código es
+`src/protocol.rs`; `src/lamp.rs` solo consume sus constantes, parser y
+constructores de informes.
 
 - Firma de detección: el descriptor contiene `05 59 09 01 A1 01`
   (Usage Page LampArray, Usage LampArray, Collection Application).
