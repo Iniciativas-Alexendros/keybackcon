@@ -1,0 +1,12 @@
+[Unit]
+Description=Keyboard Backlight Controls animation (%i)
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/keybackcon animation %i
+ExecStopPost=%h/.local/bin/keybackcon firmware-effects on
+Restart=no
+Nice=10
+
+[Install]
+WantedBy=default.target

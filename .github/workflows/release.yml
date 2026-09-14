@@ -1,0 +1,45 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: La versión del tag debe coincidir con Cargo.toml
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*\"([^\"]+)\".*/\1/')"
+          echo "tag=$TAG cargo=$VER"
+          [ "$TAG" = "$VER" ] || { echo "El tag v$TAG no coincide con Cargo.toml ($VER)"; exit 1; }
+      - run: cargo test -- --test-threads=1
+      - run: cargo build --release
+      - run: bash scripts/smoke.sh
+      - name: Empaquetar
+        run: |
+          VER="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*\"([^\"]+)\".*/\1/')"
+          DIST="keybackcon-v${VER}-linux-x86_64"
+          mkdir -p "dist/${DIST}"
+          cp target/release/keybackcon "dist/${DIST}/"
+          cp gui/control_panel.py "dist/${DIST}/keybackcon-gui"
+          chmod +x "dist/${DIST}/keybackcon-gui"
+          cp -r packaging "dist/${DIST}/"
+          cp README.md LICENSE CHANGELOG.md "dist/${DIST}/"
+          tar -czf "dist/${DIST}.tar.gz" -C dist "${DIST}"
+          (cd "dist/${DIST}" && sha256sum keybackcon keybackcon-gui > SHA256SUMS)
+          cp "dist/${DIST}.tar.gz" "dist/SHA256SUMS" 2>/dev/null || true
+          (cd dist && sha256sum "${DIST}.tar.gz" > SHA256SUMS)
+          ls -la dist/
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS

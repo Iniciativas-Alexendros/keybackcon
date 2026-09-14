@@ -1,0 +1,31 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy -- -D warnings
+      - run: cargo test -- --test-threads=1
+      - run: cargo build --release
+
+  gui-packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile gui/control_panel.py
+      - run: bash scripts/smoke.sh
+      - name: shellcheck
+        run: |
+          if command -v shellcheck >/dev/null; then
+            shellcheck scripts/install.sh scripts/smoke.sh
+          else
+            bash -n scripts/install.sh && bash -n scripts/smoke.sh
+          fi

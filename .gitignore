@@ -1,0 +1,7 @@
+/target/
+TASKS.md
+*.pyc
+__pycache__/
+*.swp
+*~
+.DS_Store

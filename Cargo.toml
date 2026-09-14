@@ -1,0 +1,23 @@
+[package]
+name = "keybackcon"
+version = "2.0.0"
+edition = "2021"
+description = "Keyboard Backlight Controls — control RGB del teclado AERO X16 vía HID LampArray, sin dependencias"
+license = "MIT"
+repository = "https://github.com/Iniciativas-Alexendros/keybackcon"
+homepage = "https://github.com/Iniciativas-Alexendros/keybackcon"
+keywords = ["keyboard", "rgb", "hid", "lamparray", "backlight"]
+categories = ["hardware-support", "command-line-utilities"]
+
+[[bin]]
+name = "keybackcon"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = true
+codegen-units = 1
+
+[profile.dev]
+opt-level = 0
