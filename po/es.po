@@ -192,3 +192,55 @@ msgstr "Movimiento {mode} en marcha"
 #: gui/control_panel.py:631
 msgid "Luz fijada de nuevo"
 msgstr "Luz fijada de nuevo"
+
+#: gui/brightness.py:1
+msgid "Mínimo"
+msgstr "Mínimo"
+
+#: gui/brightness.py:1
+msgid "Bajo"
+msgstr "Bajo"
+
+#: gui/brightness.py:1
+msgid "Medio"
+msgstr "Medio"
+
+#: gui/brightness.py:1
+msgid "Alto"
+msgstr "Alto"
+
+#: gui/brightness.py:1
+msgid "Máximo"
+msgstr "Máximo"
+
+#: gui/window.py:700
+msgid "Sin acceso al teclado"
+msgstr "Sin acceso al teclado"
+
+#: gui/window.py:700
+msgid "No se pudo hablar con el teclado. Suele ser un permiso del sistema y se arregla con un clic."
+msgstr "No se pudo hablar con el teclado. Suele ser un permiso del sistema y se arregla con un clic."
+
+#: gui/window.py:700
+msgid "No se pudo hablar con el teclado. Instálalo a mano y reintenta: install -m644 ~/.local/share/keybackcon/70-keybackcon.rules /etc/udev/rules.d/70-keybackcon.rules && sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw"
+msgstr "No se pudo hablar con el teclado. Instálalo a mano y reintenta: install -m644 ~/.local/share/keybackcon/70-keybackcon.rules /etc/udev/rules.d/70-keybackcon.rules && sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw"
+
+#: gui/window.py:700
+msgid "Instalar permiso"
+msgstr "Instalar permiso"
+
+#: gui/window.py:700
+msgid "Reintentar"
+msgstr "Reintentar"
+
+#: gui/settings.py:247
+msgid "Restaurar color ahora"
+msgstr "Restaurar color ahora"
+
+#: gui/settings.py:247
+msgid "Aplica el último color guardado."
+msgstr "Aplica el último color guardado."
+
+#: gui/settings.py:262
+msgid "Dispositivo"
+msgstr "Dispositivo"

@@ -1,3 +1,6 @@
+import os
+import shutil
+import subprocess
 import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -54,6 +57,13 @@ except ImportError:
 
             def is_effects_enabled():
                 return True
+try:
+    from gui.brightness import NIVELES, pct_a_nivel, pct_de_nivel, avanzar
+except ImportError:
+    try:
+        from .brightness import NIVELES, pct_a_nivel, pct_de_nivel, avanzar
+    except ImportError:
+        from brightness import NIVELES, pct_a_nivel, pct_de_nivel, avanzar
 
 
 APP_ID = "org.iniciativas.keybackcon"
@@ -223,6 +233,10 @@ class MesaWindow(Adw.ApplicationWindow):
             color_hex, pct = self._client.get_state_file()
         except Exception:
             color_hex, pct = "ffffff", 100
+        try:
+            pct = pct_de_nivel(pct_a_nivel(pct))
+        except Exception:
+            pass
         self._preview = StagePreview(color_hex, pct, "fijar")
         try:
             self._preview.set_effects_enabled(is_effects_enabled())
@@ -335,17 +349,19 @@ class MesaWindow(Adw.ApplicationWindow):
         content.append(self._section(_("Cuánta luz quieres"), _("Desliza o usa − / + . Se guarda solo.")))
         brow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         minus = Gtk.Button(label="−")
-        minus.connect("clicked", self._on_bright_step, -5)
+        minus.connect("clicked", self._on_bright_step, -1)
         brow.append(minus)
-        self.bright_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5)
-        self.bright_scale.add_css_class("bright-scale")
-        self.bright_scale.set_value(self.cur_pct)
-        self.bright_scale.set_hexpand(True)
-        self.bright_scale.set_draw_value(False)
-        self.bright_scale.connect("value-changed", self._on_bright)
-        brow.append(self.bright_scale)
+        self.bright_buttons = {}
+        self._syncing_bright = False
+        for nivel, nombre, pctv in NIVELES:
+            bb = Gtk.ToggleButton(label=str(nivel))
+            bb.set_tooltip_text(f"{_(nombre)} · {pctv}%")
+            bb.add_css_class("segmented-btn")
+            bb.connect("toggled", self._on_bright_nivel, nivel)
+            brow.append(bb)
+            self.bright_buttons[nivel] = bb
         plus = Gtk.Button(label="+")
-        plus.connect("clicked", self._on_bright_step, 5)
+        plus.connect("clicked", self._on_bright_step, 1)
         brow.append(plus)
         self.bright_value = Gtk.Label(label=f"{self.cur_pct}%")
         self.bright_value.add_css_class("mono-font")
@@ -386,6 +402,10 @@ class MesaWindow(Adw.ApplicationWindow):
         self._refresh_caption()
         GLib.timeout_add(1000, self._tick_status)
         self._tick_status()
+        try:
+            GLib.idle_add(self._maybe_udev_dialog)
+        except Exception:
+            pass
 
     def _section(self, title, hint):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -470,6 +490,31 @@ class MesaWindow(Adw.ApplicationWindow):
         name = next((n for n, h in COLORES if h == self.cur_color), "Tu tono")
         self.stage_caption.set_text(f"{_(name)} · #{self.cur_color} · {self.cur_pct}%")
         self.bright_value.set_text(f"{self.cur_pct}%")
+        self._sync_bright_buttons()
+
+    def _sync_bright_buttons(self):
+        try:
+            nivel = pct_a_nivel(self.cur_pct)
+        except Exception:
+            return
+        if not hasattr(self, "bright_buttons"):
+            return
+        self._syncing_bright = True
+        try:
+            for n, b in self.bright_buttons.items():
+                try:
+                    if n == nivel:
+                        if not b.get_active():
+                            b.set_active(True)
+                        b.add_css_class("suggested")
+                    else:
+                        if b.get_active():
+                            b.set_active(False)
+                        b.remove_css_class("suggested")
+                except Exception:
+                    pass
+        finally:
+            self._syncing_bright = False
 
     def _tick_status(self):
         try:
@@ -537,18 +582,70 @@ class MesaWindow(Adw.ApplicationWindow):
             self._mark_selected()
             self._refresh_caption()
 
-    def _on_bright(self, scale):
-        v = int(scale.get_value())
-        self.cur_pct = v
-        self._preview.set_brightness(v)
-        self._refresh_caption()
+    def _on_bright_nivel(self, btn, nivel):
+        if not btn.get_active():
+            return
+        if getattr(self, "_syncing_bright", False):
+            return
+        for n, b in self.bright_buttons.items():
+            if n != nivel:
+                try:
+                    if b.get_active():
+                        b.set_active(False)
+                except Exception:
+                    pass
+                try:
+                    b.remove_css_class("suggested")
+                except Exception:
+                    pass
+        try:
+            btn.add_css_class("suggested")
+        except Exception:
+            pass
+        try:
+            pctv = pct_de_nivel(nivel)
+        except Exception:
+            return
+        self.cur_pct = pctv
+        try:
+            self._preview.set_brightness(pctv)
+        except Exception:
+            pass
+        name = next((n for n, h in COLORES if h == self.cur_color), "Tu tono")
+        try:
+            self.stage_caption.set_text(f"{_(name)} · #{self.cur_color} · {self.cur_pct}%")
+        except Exception:
+            pass
+        try:
+            self.bright_value.set_text(f"{self.cur_pct}%")
+        except Exception:
+            pass
         if self._bright_source is not None:
-            GLib.source_remove(self._bright_source)
-        self._bright_source = GLib.timeout_add(150, self._apply_bright, v)
+            try:
+                GLib.source_remove(self._bright_source)
+            except Exception:
+                pass
+        self._bright_source = GLib.timeout_add(150, self._apply_bright, pctv)
 
     def _on_bright_step(self, _btn, delta):
-        v = max(0, min(100, self.cur_pct + delta))
-        self.bright_scale.set_value(v)
+        try:
+            step = 1 if int(delta) > 0 else -1
+        except Exception:
+            step = 1 if delta > 0 else -1
+        if step == 0:
+            return
+        try:
+            nivel = avanzar(self.cur_pct, step)
+        except Exception:
+            return
+        target = self.bright_buttons.get(nivel)
+        if target is None:
+            return
+        try:
+            if not target.get_active():
+                target.set_active(True)
+        except Exception:
+            pass
 
     def _apply_bright(self, v):
         self._bright_source = None
@@ -590,7 +687,7 @@ class MesaWindow(Adw.ApplicationWindow):
         try:
             if SettingsDialog is None:
                 return False
-            dialog = SettingsDialog(on_effects_changed=self._preview.set_effects_enabled)
+            dialog = SettingsDialog(on_effects_changed=self._preview.set_effects_enabled, client=self._client)
             dialog.present(self)
             return True
         except Exception:
@@ -627,10 +724,10 @@ class MesaWindow(Adw.ApplicationWindow):
                     return True
         name = Gdk.keyval_name(keyval)
         if name in ("plus", "KP_Add", "equal"):
-            self._on_bright_step(None, 5)
+            self._on_bright_step(None, 1)
             return True
         if name in ("minus", "KP_Subtract"):
-            self._on_bright_step(None, -5)
+            self._on_bright_step(None, -1)
             return True
         return False
 
@@ -653,6 +750,117 @@ class MesaWindow(Adw.ApplicationWindow):
                 self._stage_tick_id = self._preview.attach(self.stage, 16)
             except Exception:
                 self._stage_tick_id = None
+
+    def _udev_source(self):
+        try:
+            path = os.path.expanduser("~/.local/share/keybackcon/70-keybackcon.rules")
+        except Exception:
+            return ""
+        return path
+
+    def _udev_can_install(self):
+        try:
+            if shutil.which("pkexec") is None:
+                return False
+        except Exception:
+            return False
+        try:
+            return os.path.isfile(self._udev_source())
+        except Exception:
+            return False
+
+    def _maybe_udev_dialog(self):
+        try:
+            if os.path.exists("/etc/udev/rules.d/70-keybackcon.rules"):
+                return False
+        except Exception:
+            return False
+        try:
+            self._client.info()
+            return False
+        except Exception:
+            pass
+        try:
+            can = self._udev_can_install()
+        except Exception:
+            can = False
+        if can:
+            body = _("No se pudo hablar con el teclado. Suele ser un permiso del sistema y se arregla con un clic.")
+        else:
+            body = _("No se pudo hablar con el teclado. Instálalo a mano y reintenta: install -m644 ~/.local/share/keybackcon/70-keybackcon.rules /etc/udev/rules.d/70-keybackcon.rules && sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw")
+        try:
+            dlg = Adw.AlertDialog.new(_("Sin acceso al teclado"), body)
+        except Exception:
+            return False
+        try:
+            if can:
+                dlg.add_response("install", _("Instalar permiso"))
+            dlg.add_response("retry", _("Reintentar"))
+            dlg.add_response("ok", _("Entendido"))
+            dlg.set_default_response("ok")
+            dlg.set_close_response("ok")
+        except Exception:
+            pass
+        try:
+            dlg.set_response_appearance("install", Adw.ResponseAppearance.SUGGESTED)
+        except Exception:
+            pass
+        try:
+            dlg.connect("response", self._on_udev_response)
+        except Exception:
+            pass
+        try:
+            dlg.present(self)
+        except Exception:
+            pass
+        return False
+
+    def _on_udev_response(self, _dlg, response):
+        if response == "install":
+            src = self._udev_source()
+            dst = "/etc/udev/rules.d/70-keybackcon.rules"
+            cmd = ["pkexec", "sh", "-c", "install -m644 " + src + " " + dst + " && udevadm control --reload && udevadm trigger --subsystem-match=hidraw"]
+            try:
+                subprocess.run(cmd, check=False)
+            except Exception as e:
+                try:
+                    self._error(str(e))
+                except Exception:
+                    pass
+                return
+            try:
+                self._client.info()
+            except Exception as e:
+                try:
+                    msg = e.message if hasattr(e, "message") else str(e)
+                except Exception:
+                    msg = str(e)
+                try:
+                    self._error(msg)
+                except Exception:
+                    pass
+                return
+            try:
+                self._tick_status()
+            except Exception:
+                pass
+        elif response == "retry":
+            try:
+                self._client.info()
+            except Exception as e:
+                try:
+                    msg = e.message if hasattr(e, "message") else str(e)
+                except Exception:
+                    msg = str(e)
+                try:
+                    self._error(msg)
+                except Exception:
+                    pass
+                return
+            try:
+                self._tick_status()
+            except Exception:
+                pass
 
     def _on_close(self, _widget):
         try:
