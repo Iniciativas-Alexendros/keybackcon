@@ -42,6 +42,11 @@ jobs:
           cp README.md LICENSE CHANGELOG.md "dist/${DIST}/"
           (cd "dist/${DIST}" && sha256sum keybackcon keybackcon-gui > SHA256SUMS)
           tar -czf "dist/${DIST}.tar.gz" -C dist "${DIST}"
+      - name: Generar .mo (i18n para el .deb)
+        run: |
+          command -v msgfmt >/dev/null 2>&1 || sudo apt-get install -y gettext
+          mkdir -p gui/locale/es/LC_MESSAGES
+          msgfmt -o gui/locale/es/LC_MESSAGES/keybackcon.mo po/es.po
       - name: Construir .deb (cargo-deb)
         run: cargo deb --no-build
       - name: Generar SBOM (CycloneDX)
