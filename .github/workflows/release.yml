@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -22,6 +24,10 @@ jobs:
       - run: cargo test -- --test-threads=1
       - run: cargo build --release
       - run: bash scripts/smoke.sh
+      - name: Instalar herramientas de empaquetado
+        run: |
+          cargo install cargo-deb --locked
+          cargo install cargo-cyclonedx --locked
       - name: Empaquetar
         run: |
           VER="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*\"([^\"]+)\".*/\1/')"
@@ -32,14 +38,31 @@ jobs:
           chmod +x "dist/${DIST}/keybackcon-gui"
           cp -r packaging "dist/${DIST}/"
           cp README.md LICENSE CHANGELOG.md "dist/${DIST}/"
-          tar -czf "dist/${DIST}.tar.gz" -C dist "${DIST}"
           (cd "dist/${DIST}" && sha256sum keybackcon keybackcon-gui > SHA256SUMS)
-          cp "dist/${DIST}.tar.gz" "dist/SHA256SUMS" 2>/dev/null || true
-          (cd dist && sha256sum "${DIST}.tar.gz" > SHA256SUMS)
+          tar -czf "dist/${DIST}.tar.gz" -C dist "${DIST}"
+      - name: Construir .deb (cargo-deb)
+        run: cargo deb --no-build
+      - name: Generar SBOM (CycloneDX)
+        run: cargo cyclonedx --format json --override-filename sbom
+      - name: Reunir artefactos y SHA256SUMS
+        run: |
+          cp target/debian/*.deb dist/
+          cp sbom.json dist/
+          (cd dist && sha256sum ./*.tar.gz ./*.deb sbom.json > SHA256SUMS)
+          cat dist/SHA256SUMS
           ls -la dist/
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/sbom.json
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
             dist/*.tar.gz
+            dist/*.deb
+            dist/sbom.json
             dist/SHA256SUMS

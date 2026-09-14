@@ -25,7 +25,19 @@ jobs:
       - name: shellcheck
         run: |
           if command -v shellcheck >/dev/null; then
-            shellcheck scripts/install.sh scripts/smoke.sh
+            shellcheck scripts/install.sh scripts/smoke.sh \
+              packaging/debian/postinst packaging/debian/prerm packaging/aur/PKGBUILD
           else
-            bash -n scripts/install.sh && bash -n scripts/smoke.sh
+            bash -n scripts/install.sh
+            bash -n scripts/smoke.sh
+            bash -n packaging/debian/postinst
+            bash -n packaging/debian/prerm
+            bash -n packaging/aur/PKGBUILD
+          fi
+      - name: desktop-file-validate
+        run: |
+          if command -v desktop-file-validate >/dev/null; then
+            desktop-file-validate packaging/desktop/keybackcon.desktop
+          else
+            echo "desktop-file-validate no disponible; se omite"
           fi
