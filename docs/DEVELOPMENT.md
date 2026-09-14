@@ -1,14 +1,14 @@
 # Desarrollo
 
-```sh
-cargo test -- --test-threads=1   # 25 tests (los de pid usan XDG_RUNTIME_DIR temporal)
-cargo clippy --all-targets -- -D warnings
-cargo fmt --check
-RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
-./scripts/smoke.sh               # binario + GUI + packaging
-python3 -m py_compile gui/*.py
-./scripts/install.sh             # instala en ~/.local + udev (sudo) + unidades de usuario
-```
+Checklist ejecutable (en orden):
+
+- [ ] `cargo test -- --test-threads=1` — 25 tests (los de pid usan XDG_RUNTIME_DIR temporal)
+- [ ] `cargo clippy --all-targets -- -D warnings`
+- [ ] `cargo fmt --check`
+- [ ] `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`
+- [ ] `./scripts/smoke.sh` — binario + GUI + packaging
+- [ ] `python3 -m py_compile gui/*.py`
+- [ ] `./scripts/install.sh` — instala en ~/.local + udev (sudo) + unidades de usuario
 
 ## Calidad
 
@@ -24,7 +24,8 @@ python3 -m py_compile gui/*.py
 - **Benchmarks**: `cargo run --release --example bench_colors` imprime una
   tabla de ns/op de `parse_color`, `scale`, `hsv`, `to_hex` y los
   constructores de informes, usando solo `std::time::Instant` y
-  `std::hint::black_box` (sin `criterion`, ver ADR 10).
+  `std::hint::black_box` (sin `criterion`, ver ADR 10 en
+  [`DECISIONS.md`](DECISIONS.md)).
 - **Property tests**: `src/color.rs` y `src/protocol.rs` incluyen pruebas
   pseudoaleatorias deterministas con un xorshift64 de semilla fija (sin
   `proptest`, ver ADR 10); corren con el resto de `cargo test`.

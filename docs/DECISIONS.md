@@ -1,5 +1,19 @@
 # Decisiones (ADR breves)
 
+| ID | Título | Estado | Resumen |
+|---|---|---|---|
+| 1 | Nombre `keybackcon` | Aceptada | Un solo nombre para binario, repo y App ID, con migración heredada desde `kbd-rgb`. |
+| 2 | Cargo con cero dependencias | Aceptada | Binario pequeño y reproducible sin crates externos. |
+| 3 | Instancia única vía pidfile validado | Aceptada | Una sola animación viva, sin matar procesos reciclados. |
+| 4 | Brillo por escala RGB persistente | Aceptada | Sin canal de brillo en firmware, el % escala el RGB y persiste. |
+| 5 | GUI: mesa de luz con light-stage | Aceptada | Fijar luz en <2 s con vista previa fiel, sin prueba-error. |
+| 6 | Transporte HID abstracto y parada limpia | Aceptada | `HidTransport` testeable sin hardware y ciclo de vida determinista. |
+| 7 | CLI estructurada sin dependencias | Aceptada | `enum Command` + parser manual con mismos textos y salidas. |
+| 8 | Protocolo centralizado en `protocol.rs` | Aceptada | Un solo archivo dueño de los bytes del cable, sin literales duplicados. |
+| 9 | GUI por subproceso, sin FFI | Aplazada | Sin cdylib/FFI por ahora; se acepta duplicar la matemática de vista previa. |
+| 10 | Rustdoc, pedantic y benchmarks sin dependencias | Aceptada | Calidad medible (rustdoc, clippy pedantic, bench/property propios) sin `criterion`/`proptest`. |
+| 11 | Cota `HID_IOCTL_MAX_LEN` en el ioctl | Aceptada | Rechazar en construcción lo que el campo size de 14 bits no puede codificar. |
+
 ## 1. Nombre: `keybackcon` / "Keyboard Backlight Controls"
 Un solo nombre corto para binario, repo y App ID (`org.iniciativas.keybackcon`);
 el nombre largo solo en display/docs/ventana. Rutas nuevas
@@ -39,7 +53,8 @@ error. Motivo: ciclo de vida determinista y auditable sin crates.
 
 ## 7. CLI estructurada sin dependencias
 `cli.rs` modela los comandos como un `enum Command` (`Help`, `Version`,
-`Info`, `Set`, `Off`, `Brightness`, `FirmwareEffects`, `Animation`, `Stop`)
+`Info`, `Set`, `Off`, `Brightness`, `FirmwareEffects`, `Animation`, `Stop`,
+`Restore`)
 poblado por un `parse(&[String])` manual, y cada comando tiene su `cmd_*`.
 Los fallos viajan como `error::Error { Usage, Invalid, Io }` (`Display` +
 `std::error::Error` + `From<io::Error>`) y `color::ColorError` conserva el

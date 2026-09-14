@@ -32,7 +32,7 @@ except ImportError:
     try:
         from . import __version__ as APP_VERSION
     except ImportError:
-        APP_VERSION = "2.1.0"
+        APP_VERSION = "2.2.0"
 
 
 SCHEMA_ID = "org.iniciativas.keybackcon"

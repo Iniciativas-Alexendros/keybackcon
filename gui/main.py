@@ -42,7 +42,7 @@ def _app_version():
         from gui import __version__ as version
         return version
     except ImportError:
-        return "2.1.0"
+        return "2.2.0"
 
 
 def _load_client():
