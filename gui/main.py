@@ -213,9 +213,16 @@ def _run_tray_only(client, TrayIndicator):
     try:
         import signal
 
+        try:
+            from gi.repository import GLibUnix
+        except Exception:
+            GLibUnix = None
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
-                GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, on_signal)
+                if GLibUnix is not None:
+                    GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, sig, on_signal)
+                else:
+                    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, on_signal)
             except Exception:
                 pass
     except Exception:
