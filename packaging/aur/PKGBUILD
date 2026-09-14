@@ -9,8 +9,8 @@ arch=('x86_64')
 url="https://github.com/Iniciativas-Alexendros/keybackcon"
 license=('MIT')
 depends=()
-optdepends=('python-gobject: panel gráfico keybackcon-gui' 'gtk4: panel gráfico keybackcon-gui' 'libadwaita: panel gráfico keybackcon-gui')
-makedepends=('cargo')
+optdepends=('python-gobject: panel gráfico keybackcon-gui' 'gtk4: panel gráfico keybackcon-gui' 'libadwaita: panel gráfico keybackcon-gui' 'libayatana-appindicator: indicador de bandeja para keybackcon-gui')
+makedepends=('cargo' 'gettext')
 conflicts=('kbd-rgb')
 replaces=('kbd-rgb')
 # Pendiente de publicación AUR: sustituir 'SKIP' por el sha256 real con `updpkgsums` cuando toque publicar.
@@ -20,6 +20,8 @@ source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz
 build() {
   cd "${pkgname}-${pkgver}" || return 1
   cargo build --release --locked
+  mkdir -p gui/locale/es/LC_MESSAGES
+  msgfmt -o gui/locale/es/LC_MESSAGES/keybackcon.mo po/es.po
 }
 
 package() {
@@ -31,5 +33,7 @@ package() {
   install -Dm644 packaging/udev/70-keybackcon.rules "${pkgdir}/usr/lib/udev/rules.d/70-keybackcon.rules"
   install -Dm644 packaging/systemd/keybackcon.service "${pkgdir}/usr/lib/systemd/user/keybackcon.service"
   install -Dm644 packaging/systemd/keybackcon-animation@.service "${pkgdir}/usr/lib/systemd/user/keybackcon-animation@.service"
+  install -Dm644 gui/locale/es/LC_MESSAGES/keybackcon.mo "${pkgdir}/usr/share/locale/es/LC_MESSAGES/keybackcon.mo"
+  install -Dm644 gui/org.iniciativas.keybackcon.gschema.xml "${pkgdir}/usr/share/glib-2.0/schemas/org.iniciativas.keybackcon.gschema.xml"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

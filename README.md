@@ -10,6 +10,16 @@ Fija la luz de tu teclado **AERO X16** en dos toques: elige color, ajusta
 intensidad y listo. CLI en Rust sin dependencias (habla HID LampArray
 directo) + mesa de luz GTK4 con vista previa fiel.
 
+<p align="center">
+  <img src="assets/screenshots/window-dark.png" width="300" alt="Mesa de luz en tema oscuro">
+  <img src="assets/screenshots/window-light.png" width="300" alt="Mesa de luz en tema claro">
+</p>
+
+La GUI vive también en la **bandeja del sistema** (`keybackcon-gui --tray`):
+sigue al tema claro/oscuro de tu escritorio, muestra cada filtro con su
+color real y previsualiza los movimientos (fijar, respirar, arcoíris) con
+efectos. Todo en castellano.
+
 ## Instalación
 
 ### Debian / Ubuntu (`.deb`)
