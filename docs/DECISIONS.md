@@ -87,3 +87,9 @@ arrastrarían árboles de dependencias desproporcionados para unas pocas
 operaciones puras. Trade-off aceptado: los benchmarks dan tiempo medio (no
 percentiles) y las property tests usan un generador propio de 64 bits;
 suficiente para las invariantes actuales y reproducible en CI.
+
+## 11. Cota `HID_IOCTL_MAX_LEN` en el ioctl
+`hid_ioctl_request` rechaza 0 y `>0x3FFF` (`HID_IOCTL_MAX_LEN`): el campo size solo
+tiene 14 bits (`_IOC_SIZEBITS`, `include/uapi/asm-generic/ioctl.h`); antes aceptaba
+hasta `u16::MAX` truncando con `& 0x3fff`. Motivo: fallar en construcción en vez de
+pedir al kernel otra longitud; 1/10/23 codifican idéntico.

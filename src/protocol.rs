@@ -50,11 +50,13 @@ pub const HIDIOCSFEATURE_NR: u64 = 0x06;
 pub const HID_IOCTL_TYPE: u64 = 0x48;
 /// Bits de dirección `_IOC_WRITE | _IOC_READ` de `_IOWR`.
 pub const HID_IOCTL_DIR: u64 = 0xC000_0000;
+/// Longitud máxima codificable en el campo size del ioctl (14 bits de `_IOC_SIZEBITS`, `include/uapi/asm-generic/ioctl.h`).
+pub const HID_IOCTL_MAX_LEN: usize = 0x3FFF;
 
 /// Codifica una petición `_IOWR` de HID con la longitud real del informe;
-/// rechaza 0 y longitudes mayores que `u16::MAX`.
+/// rechaza 0 y longitudes mayores que `HID_IOCTL_MAX_LEN`.
 pub fn hid_ioctl_request(nr: u64, len: usize) -> io::Result<u64> {
-    if len == 0 || len > u16::MAX as usize {
+    if len == 0 || len > HID_IOCTL_MAX_LEN {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!("longitud de informe inválida: {len}"),
@@ -153,13 +155,22 @@ mod tests {
 
     #[test]
     fn hid_ioctl_request_codifica_longitud_y_rechaza_invalidas() {
-        let r = hid_ioctl_request(HIDIOCGFEATURE_NR, 23).unwrap();
-        assert_eq!(r >> 30, 0b11);
-        assert_eq!((r >> 16) & 0x3fff, 23);
-        assert_eq!((r >> 8) & 0xff, HID_IOCTL_TYPE);
-        assert_eq!(r & 0xff, HIDIOCGFEATURE_NR);
+        for len in [1usize, 10, 23, HID_IOCTL_MAX_LEN] {
+            let r = hid_ioctl_request(HIDIOCGFEATURE_NR, len).unwrap();
+            let expect = u64::try_from(len).unwrap();
+            assert_eq!(r >> 30, 0b11);
+            assert_eq!((r >> 16) & 0x3fff, expect);
+            assert_eq!(
+                r,
+                HID_IOCTL_DIR | (expect << 16) | (HID_IOCTL_TYPE << 8) | HIDIOCGFEATURE_NR
+            );
+            assert_eq!((r >> 8) & 0xff, HID_IOCTL_TYPE);
+            assert_eq!(r & 0xff, HIDIOCGFEATURE_NR);
+        }
         assert!(hid_ioctl_request(HIDIOCSFEATURE_NR, 0).is_err());
+        assert!(hid_ioctl_request(HIDIOCSFEATURE_NR, HID_IOCTL_MAX_LEN + 1).is_err());
         assert!(hid_ioctl_request(HIDIOCSFEATURE_NR, 0x1_0000).is_err());
+        assert!(hid_ioctl_request(HIDIOCSFEATURE_NR, usize::from(u16::MAX)).is_err());
     }
 
     #[test]
@@ -180,14 +191,19 @@ mod tests {
     #[test]
     fn hid_ioctl_request_codifica_todas_las_longitudes() {
         let mut rng = Xorshift64(0x0123_4567_89ab_cdef);
-        for len in 1..=usize::from(u16::MAX) {
+        for len in 1..=HID_IOCTL_MAX_LEN {
             let nr = u64::from(rng.next_u8());
             let r = hid_ioctl_request(nr, len).unwrap();
+            let expect = u64::try_from(len).unwrap();
             assert_eq!(r >> 30, 0b11);
             assert_eq!(
                 (r >> 16) & 0x3fff,
-                u64::try_from(len).unwrap() & 0x3fff,
+                expect,
                 "campo size del ioctl para len={len}"
+            );
+            assert_eq!(
+                r,
+                HID_IOCTL_DIR | (expect << 16) | (HID_IOCTL_TYPE << 8) | (nr & 0xff)
             );
             assert_eq!((r >> 8) & 0xff, HID_IOCTL_TYPE);
             assert_eq!(r & 0xff, nr & 0xff);
@@ -196,7 +212,14 @@ mod tests {
             let r = hid_ioctl_request(HIDIOCGFEATURE_NR, len).unwrap();
             assert_eq!((r >> 16) & 0x3fff, u64::try_from(len).unwrap());
         }
+        let borde = hid_ioctl_request(HIDIOCGFEATURE_NR, HID_IOCTL_MAX_LEN).unwrap();
+        assert_eq!(
+            (borde >> 16) & 0x3fff,
+            u64::try_from(HID_IOCTL_MAX_LEN).unwrap()
+        );
         assert!(hid_ioctl_request(HIDIOCGFEATURE_NR, 0).is_err());
+        assert!(hid_ioctl_request(HIDIOCGFEATURE_NR, HID_IOCTL_MAX_LEN + 1).is_err());
         assert!(hid_ioctl_request(HIDIOCGFEATURE_NR, 0x1_0000).is_err());
+        assert!(hid_ioctl_request(HIDIOCGFEATURE_NR, usize::from(u16::MAX)).is_err());
     }
 }
