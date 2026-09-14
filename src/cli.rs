@@ -41,6 +41,8 @@ pub enum Command {
     },
     /// Detiene la animación y restaura el color base.
     Stop,
+    /// Reaplica el color y brillo guardados (p. ej. al iniciar sesión).
+    Restore,
 }
 
 /// Modo de animación en primer plano.
@@ -75,7 +77,8 @@ pub fn usage() -> ! {
     eprintln!(
         "uso: {BIN} <comando>\n\
          \n  Keyboard Backlight Controls — una zona, instancia única de animación\n\
-         \n  info                     información del dispositivo (nº de lámparas, ruta hidraw)\n  set <color>              asigna color — hex 'ff6400' o nombre de predefinido\n  off                      apaga (el estado se conserva)\n  brightness <+N|-N|N>     brillo — escala RGB, persistente (alias: bright)\n  firmware-effects on|off  efectos del firmware (alias: auto)\n  animation <breathe|rainbow> [--fps N]\n                           animación en primer plano; instancia única (alias: anim)\n  stop                     detiene la animación y restaura el color base\n  --help, -h               muestra esta ayuda\n  --version, -V            muestra la versión\n\
+         \n  info                     información del dispositivo (nº de lámparas, ruta hidraw)\n  set <color>              asigna color — hex 'ff6400' o nombre de predefinido\n  off                      apaga (el estado se conserva)\n  brightness <+N|-N|N>     brillo — escala RGB, persistente (alias: bright)\n  firmware-effects on|off  efectos del firmware (alias: auto)\n  animation <breathe|rainbow> [--fps N]\n                           animación en primer plano; instancia única (alias: anim)\n  stop                     detiene la animación y restaura el color base
+  restore                  reaplica el color y brillo guardados (p. ej. al iniciar sesión)\n  --help, -h               muestra esta ayuda\n  --version, -V            muestra la versión\n\
          \npredefinidos: {}",
         crate::color::PRESETS
             .iter()
@@ -108,6 +111,7 @@ pub fn parse(args: &[String]) -> Result<Command, Error> {
         ))),
         Some("animation" | "anim") => parse_animation(args),
         Some("stop") => Ok(Command::Stop),
+        Some("restore") => Ok(Command::Restore),
         _ => Err(Error::Usage),
     }
 }
@@ -161,6 +165,7 @@ pub fn run() -> Result<(), Error> {
         Command::FirmwareEffects(on) => cmd_firmware_effects(on),
         Command::Animation { mode, fps } => cmd_animation(mode, fps),
         Command::Stop => cmd_stop(),
+        Command::Restore => cmd_restore(),
     }
 }
 
@@ -242,5 +247,30 @@ pub fn main() {
             let _ = writeln!(io::stderr(), "{BIN}: {e}");
             std::process::exit(1);
         }
+    }
+}
+
+fn cmd_restore() -> Result<(), Error> {
+    let (base, pct) = state::load_state();
+    animation::stop_animation();
+    state::apply(&mut Lamp::open()?, base, pct)?;
+    println!(
+        "restaurado: #{:02x}{:02x}{:02x} @ %{pct}",
+        base.0, base.1, base.2
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(v: &[&str]) -> Vec<String> {
+        v.iter().map(ToString::to_string).collect()
+    }
+
+    #[test]
+    fn parse_restore_devuelve_restore() {
+        assert!(matches!(parse(&args(&["restore"])), Ok(Command::Restore)));
     }
 }
