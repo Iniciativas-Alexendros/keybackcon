@@ -62,5 +62,59 @@ else
   bad "icono"
 fi
 
+gui_fail=0
+for py in "${REPO_DIR}"/gui/*.py; do
+  if ! python3 -m py_compile "$py"; then
+    gui_fail=1
+  fi
+done
+if [ "$gui_fail" -eq 0 ]; then
+  ok "GUI completa compila (gui/*.py)"
+else
+  bad "GUI completa"
+fi
+
+if python3 -c 'import sys; from xml.dom import minidom; minidom.parse(sys.argv[1])' "${REPO_DIR}/gui/org.iniciativas.keybackcon.gschema.xml"; then
+  ok "schema XML válido (minidom)"
+else
+  bad "schema XML"
+fi
+if command -v xmllint >/dev/null 2>&1; then
+  if xmllint --noout "${REPO_DIR}/gui/org.iniciativas.keybackcon.gschema.xml"; then
+    ok "schema XML válido (xmllint)"
+  else
+    bad "schema xmllint"
+  fi
+else
+  ok "xmllint no disponible, omitido"
+fi
+
+if ! command -v glib-compile-schemas >/dev/null 2>&1; then
+  ok "glib-compile-schemas no disponible, omitido"
+elif glib-compile-schemas --strict --dry-run "${REPO_DIR}/gui"; then
+  ok "schema compila (--strict --dry-run)"
+else
+  bad "schema"
+fi
+
+pot_n=$(grep -c '^msgid' "${REPO_DIR}/po/keybackcon.pot")
+po_n=$(grep -c '^msgid' "${REPO_DIR}/po/es.po")
+if [ "$pot_n" = "$po_n" ]; then
+  ok "i18n cobertura .pot/.po (${pot_n} msgid)"
+else
+  bad "i18n cobertura .pot (${pot_n}) vs .po (${po_n})"
+fi
+if [ -z "$(grep '^msgid' "${REPO_DIR}/po/keybackcon.pot" | sort | uniq -d)" ] && [ -z "$(grep '^msgid' "${REPO_DIR}/po/es.po" | sort | uniq -d)" ]; then
+  ok "i18n sin msgid duplicados"
+else
+  bad "i18n msgid duplicados"
+fi
+
+if python3 "${REPO_DIR}/gui/main.py" --help >/dev/null 2>&1; then
+  ok "gui/main.py --help exit 0"
+else
+  bad "gui/main.py --help"
+fi
+
 if [ "$fail" -ne 0 ]; then say "SMOKE: fallos detectados"; exit 1; fi
 say "SMOKE: todo bien"

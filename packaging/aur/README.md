@@ -50,5 +50,5 @@ cd keybackcon && git add PKGBUILD .SRCINFO && git commit -m "keybackcon 2.1.0-1"
 
 - `conflicts`/`replaces=('kbd-rgb')`: `keybackcon` sustituye al paquete
   anterior; el estado en `~/.local/state` se migra solo.
-- Dependencias opcionales de la GUI (`keybackcon-gui`): `python-gobject`, `gtk4`, `libadwaita` (solo necesarias para el panel gráfico; el CLI funciona sin ellas).
-- Compilación aislada con `cargo build --release --locked` (sin red extra).
+- Dependencias opcionales de la GUI (`keybackcon-gui`): `python-gobject`, `gtk4`, `libadwaita`, `libayatana-appindicator` (solo necesarias para el panel gráfico; el CLI funciona sin ellas; `libayatana-appindicator` solo para el indicador de bandeja).
+- Compilación aislada con `cargo build --release --locked` (sin red extra) más `msgfmt` (`gettext`, en `makedepends`) para compilar el locale `es` (`/usr/share/locale/es/LC_MESSAGES/keybackcon.mo`); el schema GSettings va a `/usr/share/glib-2.0/schemas/` y lo recompilan los hooks de glib2/pacman (sin scriptlets propios).
