@@ -181,9 +181,10 @@ def set_autostart_enabled(enabled):
 
 if Adw is not None:
     class SettingsDialog(Adw.PreferencesDialog):
-        def __init__(self, on_effects_changed=None):
+        def __init__(self, on_effects_changed=None, client=None):
             super().__init__()
             self._on_effects_changed = on_effects_changed
+            self._client = client
             self.set_title(_("Preferencias"))
             self.add(self._appearance_page())
             self.add(self._behavior_page())
@@ -243,6 +244,12 @@ if Adw is not None:
                 restore_row.set_active(True)
             restore_row.connect("notify::active", self._on_restore_toggled)
             group.add(restore_row)
+            restore_now = Adw.ActionRow()
+            restore_now.set_title(_("Restaurar color ahora"))
+            restore_now.set_subtitle(_("Aplica el último color guardado."))
+            restore_now.set_activatable(True)
+            restore_now.connect("activated", self._on_restore_now)
+            group.add(restore_now)
             return page
 
         def _about_page(self):
@@ -266,6 +273,10 @@ if Adw is not None:
             link_row.set_activatable(True)
             link_row.connect("activated", self._on_repo_activated)
             group.add(link_row)
+            device_row = Adw.ActionRow()
+            device_row.set_title(_("Dispositivo"))
+            device_row.set_subtitle(self._device_line())
+            group.add(device_row)
             return page
 
         def _on_theme_changed(self, row, _pspec):
@@ -317,5 +328,29 @@ if Adw is not None:
         def _on_repo_activated(self, _row):
             try:
                 Gtk.show_uri(None, REPO_URL, 0)
+            except Exception:
+                pass
+
+        def _device_line(self):
+            try:
+                if self._client is None:
+                    return _("sin teclado a la vista")
+                info = self._client.info()
+            except Exception:
+                return _("sin teclado a la vista")
+            try:
+                if not info:
+                    return _("sin teclado a la vista")
+                hid = str(info.get("dispositivo", "?"))
+                lamps = str(info.get("nº lámparas", info.get("n lámparas", "?")))
+                return "%s · %s %s" % (hid, lamps, _("zona(s)"))
+            except Exception:
+                return _("sin teclado a la vista")
+
+        def _on_restore_now(self, _row):
+            try:
+                if self._client is None:
+                    return
+                self._client.restore()
             except Exception:
                 pass

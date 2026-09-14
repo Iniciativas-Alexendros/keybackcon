@@ -191,3 +191,55 @@ msgstr ""
 #: gui/control_panel.py:631
 msgid "Luz fijada de nuevo"
 msgstr ""
+
+#: gui/brightness.py:1
+msgid "Mínimo"
+msgstr ""
+
+#: gui/brightness.py:1
+msgid "Bajo"
+msgstr ""
+
+#: gui/brightness.py:1
+msgid "Medio"
+msgstr ""
+
+#: gui/brightness.py:1
+msgid "Alto"
+msgstr ""
+
+#: gui/brightness.py:1
+msgid "Máximo"
+msgstr ""
+
+#: gui/window.py:700
+msgid "Sin acceso al teclado"
+msgstr ""
+
+#: gui/window.py:700
+msgid "No se pudo hablar con el teclado. Suele ser un permiso del sistema y se arregla con un clic."
+msgstr ""
+
+#: gui/window.py:700
+msgid "No se pudo hablar con el teclado. Instálalo a mano y reintenta: install -m644 ~/.local/share/keybackcon/70-keybackcon.rules /etc/udev/rules.d/70-keybackcon.rules && sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw"
+msgstr ""
+
+#: gui/window.py:700
+msgid "Instalar permiso"
+msgstr ""
+
+#: gui/window.py:700
+msgid "Reintentar"
+msgstr ""
+
+#: gui/settings.py:247
+msgid "Restaurar color ahora"
+msgstr ""
+
+#: gui/settings.py:247
+msgid "Aplica el último color guardado."
+msgstr ""
+
+#: gui/settings.py:262
+msgid "Dispositivo"
+msgstr ""

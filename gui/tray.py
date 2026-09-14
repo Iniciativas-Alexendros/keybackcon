@@ -22,6 +22,14 @@ except ImportError:
     except ImportError:
         from client import KeybackconError
 
+try:
+    from gui.brightness import avanzar, pct_a_nivel, pct_de_nivel
+except ImportError:
+    try:
+        from .brightness import avanzar, pct_a_nivel, pct_de_nivel
+    except ImportError:
+        from brightness import avanzar, pct_a_nivel, pct_de_nivel
+
 
 class TrayUnavailable(Exception):
     pass
@@ -169,7 +177,7 @@ class TrayIndicator:
         try:
             color, pct = client.get_state_file()
             self._color = _normalize_hex(color)
-            self._brightness = _clamp_brightness(pct)
+            self._brightness = pct_de_nivel(pct_a_nivel(pct))
         except Exception:
             pass
         self._pending = []
@@ -331,13 +339,20 @@ class TrayIndicator:
         self._safe(lambda: self._client.off())
 
     def _do_brightness(self, delta):
-        target = _clamp_brightness(self._brightness + delta)
+        try:
+            nivel = avanzar(self._brightness, delta)
+        except Exception:
+            nivel = 3
+        try:
+            target = pct_de_nivel(nivel)
+        except Exception:
+            target = 100
         self._brightness = target
         self._safe(lambda: self._client.set_brightness(target))
 
     def _on_scroll(self, _indicator, steps, _orientation, *args):
         try:
-            delta = BRIGHT_STEP if int(steps) > 0 else -BRIGHT_STEP
+            delta = 1 if int(steps) > 0 else -1
         except Exception:
             return True
         self._do_brightness(delta)
@@ -360,7 +375,10 @@ class TrayIndicator:
     def update_state(self, mode: str, color_hex: str, brightness: int):
         self._mode = _normalize_mode(mode)
         self._color = _normalize_hex(color_hex)
-        self._brightness = _clamp_brightness(brightness)
+        try:
+            self._brightness = pct_de_nivel(pct_a_nivel(brightness))
+        except Exception:
+            self._brightness = _clamp_brightness(brightness)
         self._render_icon()
 
     def quit(self):

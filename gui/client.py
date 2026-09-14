@@ -121,6 +121,11 @@ class KeybackconClient:
         proc = self._run(["stop"])
         return proc.stdout.strip()
 
+    def restore(self) -> str:
+        self._stop_child()
+        proc = self._run(["restore"])
+        return proc.stdout.strip()
+
     def off(self) -> None:
         self._run(["off"])
 

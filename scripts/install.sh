@@ -17,6 +17,7 @@ echo "==> keybackcon: instalar GUI en ${BIN_DST}/keybackcon-gui"
 GUI_DST="${HOME}/.local/share/keybackcon/gui"
 mkdir -p "${GUI_DST}"
 install -m644 "${REPO_DIR}"/gui/*.py "${GUI_DST}/"
+install -m644 "${REPO_DIR}/packaging/udev/70-keybackcon.rules" "${HOME}/.local/share/keybackcon/70-keybackcon.rules"
 install -m755 "${REPO_DIR}/packaging/keybackcon-gui" "${BIN_DST}/keybackcon-gui"
 
 echo "==> keybackcon: compilar traducciones (es)"
