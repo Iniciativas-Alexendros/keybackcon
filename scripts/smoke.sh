@@ -116,20 +116,24 @@ else
   bad "gui/main.py --help"
 fi
 
-if [ -n "${DISPLAY:-}" ]; then
-  if env -u WAYLAND_DISPLAY GDK_BACKEND=x11 python3 "${REPO_DIR}/gui/tray_selftest.py"; then
-    ok "tray selftest"
+if python3 -c "import gi; gi.require_version('Gtk','3.0'); gi.require_version('AyatanaAppIndicator3','0.1')" >/dev/null 2>&1; then
+  if [ -n "${DISPLAY:-}" ]; then
+    if env -u WAYLAND_DISPLAY GDK_BACKEND=x11 python3 "${REPO_DIR}/gui/tray_selftest.py"; then
+      ok "tray selftest"
+    else
+      bad "tray selftest"
+    fi
+  elif command -v xvfb-run >/dev/null 2>&1; then
+    if env -u WAYLAND_DISPLAY GDK_BACKEND=x11 xvfb-run -a python3 "${REPO_DIR}/gui/tray_selftest.py"; then
+      ok "tray selftest (xvfb)"
+    else
+      bad "tray selftest (xvfb)"
+    fi
   else
-    bad "tray selftest"
-  fi
-elif command -v xvfb-run >/dev/null 2>&1; then
-  if env -u WAYLAND_DISPLAY GDK_BACKEND=x11 xvfb-run -a python3 "${REPO_DIR}/gui/tray_selftest.py"; then
-    ok "tray selftest (xvfb)"
-  else
-    bad "tray selftest (xvfb)"
+    say "  aviso: sin display ni Xvfb, tray selftest omitido"
   fi
 else
-  say "  aviso: sin display ni Xvfb, tray selftest omitido"
+  say "  aviso: sin Gtk3/Ayatana, tray selftest omitido"
 fi
 
 if [ "$fail" -ne 0 ]; then say "SMOKE: fallos detectados"; exit 1; fi
