@@ -2,6 +2,20 @@
 
 La fuente de verdad son los tags y `git-cliff`. Resumen:
 
+## [2.1.0] — 2026-09-14
+- Robustez HID: transporte abstracto testeable, ioctls con longitud validada
+  y `SAFETY`, pidfile atómico, parada limpia por SIGINT/SIGTERM y aviso de
+  desconexión del dispositivo.
+- CLI estructurada sin dependencias (`Command`/`Error`), mismos comandos,
+  alias, mensajes y códigos de salida; tests movidos junto a su módulo.
+- Protocolo LampArray centralizado en `src/protocol.rs` (constantes,
+  constructores y parser) con la spec documentada.
+- Calidad: rustdoc, `clippy::pedantic`, 24 tests (property tests
+  deterministas) y bench std-only (`examples/bench_colors.rs`).
+- Empaquetado: `cargo-deb` + postinst/prerm, release con `.deb`, SBOM
+  CycloneDX, `SHA256SUMS` y attestation; `PKGBUILD` de AUR listo (pendiente
+  de publicar).
+
 ## [2.0.0] — 2026-09-14
 - Renombrado a `keybackcon` ("Keyboard Backlight Controls"), repo
   `Iniciativas-Alexendros/keybackcon`, App ID `org.iniciativas.keybackcon`.

@@ -1,0 +1,34 @@
+# Maintainer: Alexendros <operaciones@alexendros.dev>
+# shellcheck shell=bash
+# shellcheck disable=SC2034,SC2154
+pkgname=keybackcon
+pkgver=2.1.0
+pkgrel=1
+pkgdesc="Control RGB del teclado AERO X16 vía HID LampArray"
+arch=('x86_64')
+url="https://github.com/Iniciativas-Alexendros/keybackcon"
+license=('MIT')
+depends=('python-gobject' 'gtk4' 'libadwaita')
+makedepends=('cargo')
+conflicts=('kbd-rgb')
+replaces=('kbd-rgb')
+# Pendiente de publicación AUR: sustituir 'SKIP' por el sha256 real con `updpkgsums` cuando toque publicar.
+sha256sums=('SKIP')
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+
+build() {
+  cd "${pkgname}-${pkgver}" || return 1
+  cargo build --release --locked
+}
+
+package() {
+  cd "${pkgname}-${pkgver}" || return 1
+  install -Dm755 target/release/keybackcon "${pkgdir}/usr/bin/keybackcon"
+  install -Dm755 gui/control_panel.py "${pkgdir}/usr/bin/keybackcon-gui"
+  install -Dm644 packaging/desktop/keybackcon.desktop "${pkgdir}/usr/share/applications/keybackcon.desktop"
+  install -Dm644 assets/icons/keybackcon.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/keybackcon.svg"
+  install -Dm644 packaging/udev/70-keybackcon.rules "${pkgdir}/usr/lib/udev/rules.d/70-keybackcon.rules"
+  install -Dm644 packaging/systemd/keybackcon.service "${pkgdir}/usr/lib/systemd/user/keybackcon.service"
+  install -Dm644 packaging/systemd/keybackcon-animation@.service "${pkgdir}/usr/lib/systemd/user/keybackcon-animation@.service"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

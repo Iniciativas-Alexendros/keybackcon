@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+if [ -x /usr/bin/udevadm ]; then
+  /usr/bin/udevadm control --reload-rules || true
+  /usr/bin/udevadm trigger --subsystem-match=hidraw || true
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --global daemon-reload || true
+fi
+
+exit 0

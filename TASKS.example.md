@@ -7,4 +7,4 @@ Formato sugerido:
 
 - [ ] Probar `keybackcon animation rainbow` en el AERO X16
 - [ ] Revisar contraste del light-stage con brillo bajo
-- [ ] Empaquetar .deb / AUR cuando la v2.0.0 esté estable
+- [ ] Empaquetar .deb / AUR cuando la versión esté estable

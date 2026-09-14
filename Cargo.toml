@@ -1,6 +1,6 @@
 [package]
 name = "keybackcon"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 description = "Keyboard Backlight Controls — control RGB del teclado AERO X16 vía HID LampArray, sin dependencias"
 license = "MIT"
@@ -13,6 +13,12 @@ categories = ["hardware-support", "command-line-utilities"]
 name = "keybackcon"
 path = "src/main.rs"
 
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
 [profile.release]
 opt-level = 3
 strip = true
@@ -21,3 +27,23 @@ codegen-units = 1
 
 [profile.dev]
 opt-level = 0
+
+[package.metadata.deb]
+name = "keybackcon"
+maintainer = "Alexendros <operaciones@alexendros.dev>"
+copyright = "2026, Alexendros"
+license-file = ["LICENSE", "4"]
+revision = "1"
+depends = "$auto"
+recommends = "python3, python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1"
+section = "utils"
+priority = "optional"
+maintainer-scripts = "packaging/debian"
+assets = [
+    ["target/release/keybackcon", "usr/bin/keybackcon", "755"],
+    ["gui/control_panel.py", "usr/bin/keybackcon-gui", "755"],
+    ["packaging/desktop/keybackcon.desktop", "usr/share/applications/keybackcon.desktop", "644"],
+    ["assets/icons/keybackcon.svg", "usr/share/icons/hicolor/scalable/apps/keybackcon.svg", "644"],
+    ["packaging/udev/70-keybackcon.rules", "usr/lib/udev/rules.d/70-keybackcon.rules", "644"],
+    ["packaging/systemd/*.service", "usr/lib/systemd/user/", "644"],
+]
