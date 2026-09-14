@@ -2,6 +2,17 @@
 
 La fuente de verdad son los tags y `git-cliff`. Resumen:
 
+## [2.2.0] — sin publicar
+- Comando `restore`: detiene animación y reaplica color+brillo guardados;
+  el servicio de usuario lo ejecuta al iniciar sesión para restaurar el color.
+- Lanzador GUI por paquete (`packaging/keybackcon-gui`): localiza `gui/` y lo
+  ejecuta; mismo esquema en `.deb`, AUR, `install.sh` y release.
+- GUI acabada: bandeja Ayatana (`--tray`) con menú e icono dinámico, temas
+  claro/oscuro, vista previa con partículas, ajustes, autostart opt-in e i18n
+  en castellano (gettext).
+- Calidad/empaquetado: MSRV 1.87 declarada, GUI a `optdepends` en AUR y
+  `hid_ioctl_request` acotado a 0x3FFF (14 bits de `_IOC_SIZEBITS`).
+
 ## [2.1.0] — 2026-09-14
 - Robustez HID: transporte abstracto testeable, ioctls con longitud validada
   y `SAFETY`, pidfile atómico, parada limpia por SIGINT/SIGTERM y aviso de

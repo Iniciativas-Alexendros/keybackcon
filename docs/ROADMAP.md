@@ -9,3 +9,4 @@
 - [ ] Icono en la barra superior de GNOME (indicador Ayatana): verificar visible junto al resto de iconos con la extensión AppIndicator
 - [ ] Detección multi-zona si aparece firmware con `LampCount > 1`
 - [ ] Modo "seguir escritorio" (leer acento GTK y aplicarlo) — solo si se pide
+- [ ] v2.2.0 — comando restore, lanzador GUI por paquete, GUI acabada y empaquetado al día
