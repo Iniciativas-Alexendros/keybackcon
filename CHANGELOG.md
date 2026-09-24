@@ -2,6 +2,11 @@
 
 La fuente de verdad son los tags y `git-cliff`. Resumen:
 
+## [Unreleased]
+- Alineación al canon P0+P1+P2: jobs CI `quality`/`test`/`build`/`smoke`,
+  docs en `docs/architecture|guides|runbooks`, Renovate y contratos de raíz.
+  `LICENSE` y `release.yml` intactos.
+
 ## [2.2.1] — 2026-09-24
 - Unidades systemd del paquete apuntan a `/usr/bin/keybackcon` (restore al
   iniciar sesión en `.deb`/AUR); `install.sh` las reescribe a `~/.local/bin`.
