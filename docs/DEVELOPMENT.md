@@ -2,13 +2,28 @@
 
 Checklist ejecutable (en orden):
 
-- [ ] `cargo test -- --test-threads=1` — 27 tests (los de pid usan XDG_RUNTIME_DIR temporal)
+- [ ] `cargo test -- --test-threads=1` — 33 tests (los de pid usan XDG_RUNTIME_DIR temporal)
 - [ ] `cargo clippy --all-targets -- -D warnings`
 - [ ] `cargo fmt --check`
 - [ ] `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`
 - [ ] `./scripts/smoke.sh` — binario + GUI + packaging
 - [ ] `python3 -m py_compile gui/*.py`
 - [ ] `./scripts/install.sh` — instala en ~/.local + udev (sudo) + unidades de usuario
+
+Validación sobre el hardware real (teclado AERO X16 conectado; captura antes
+el estado con `keybackcon info --json` y restaúralo al terminar con
+`keybackcon set <hex> && keybackcon brightness <pct>`):
+
+- [ ] `keybackcon info` y `keybackcon info --json` detectan el dispositivo
+- [ ] `set` con hex y con nombre de predefinido; `brightness` con valores
+      límite (0, 1, 99, 100) y relativos (`+5`, `-5`)
+- [ ] `off` apaga y `restore` reaplica color y brillo guardados
+- [ ] `animation breathe --fps 30` arranca; `stop` tarda < 0,2 s y restaura
+- [ ] `animation rainbow` en segundo plano + `stop` (idempotente: un segundo
+      `stop` responde "no hay ninguna animación en marcha")
+- [ ] `systemctl --user start/stop keybackcon-animation@breathe` anima y
+      restaura al parar (ExecStopPost = `keybackcon stop`)
+- [ ] `firmware-effects on`/`off` y volver al color guardado
 
 ## Calidad
 
@@ -32,8 +47,14 @@ Checklist ejecutable (en orden):
 
 Commits convencionales (`feat:`, `fix:`, `docs:`…). El CHANGELOG se genera
 con `git-cliff` (ver `cliff.toml`); no lo edites a mano en releases.
-La versión vive en `Cargo.toml`; el tag `vX.Y.Z` debe coincidir (lo
-verifica el workflow de release).
+La versión canónica vive en `Cargo.toml` y está espejada en
+`gui/__init__.py` (`__version__`) y `packaging/aur/PKGBUILD` (`pkgver`); el
+workflow `.github/workflows/version.yml` las sincroniza automáticamente en
+cada push a `main`: calcula el bump con `git-cliff --bumped-version` desde
+los commits convencionales desde el último tag y, si hay bump, actualiza las
+tres fuentes, regenera `CHANGELOG.md` y crea el commit `chore(release)` y el
+tag `vX.Y.Z` (que dispara `release.yml`). El workflow de release verifica que
+el tag coincida con las tres fuentes.
 
 ## Empaquetado y release
 
@@ -52,3 +73,10 @@ verifica el workflow de release).
   `keybackcon-vX.Y.Z-linux-x86_64.tar.gz`, el `.deb`, un SBOM CycloneDX
   (`cargo-cyclonedx`), `SHA256SUMS` y una attestation de procedencia
   (`actions/attest-build-provenance`).
+- **npm**: `.github/workflows/npm.yml` compila x86_64 y arm64 y publica el
+  meta-paquete `keybackcon` (lanzador + postinstalador de regla udev y
+  unidades systemd de usuario) junto a los paquetes de binario por
+  plataforma `@keybackcon/linux-x64` y `@keybackcon/linux-arm64`. Las fuentes
+  viven en `npm/`; el binario se copia en `npm/platforms/*/bin/` solo en CI
+  (ignorado por git). Requiere el secret `NPM_TOKEN`. Prueba local con
+  `npm pack` en `npm/` y en `npm/platforms/linux-x64/`.

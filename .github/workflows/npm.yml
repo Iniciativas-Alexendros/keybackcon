@@ -1,0 +1,87 @@
+name: NPM
+# Publica en npm el meta-paquete `keybackcon` y los paquetes de binario por
+# plataforma (@keybackcon/linux-x64, @keybackcon/linux-arm64), todos con la
+# versión del tag. Requiere el secret NPM_TOKEN de una cuenta con acceso al
+# scope @keybackcon (publicar con --access public).
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - run: |
+          mkdir -p npm/platforms/linux-x64/bin
+          cp target/release/keybackcon npm/platforms/linux-x64/bin/keybackcon
+          chmod +x npm/platforms/linux-x64/bin/keybackcon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keybackcon-linux-x64
+          path: npm/platforms/linux-x64/bin/keybackcon
+
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - run: |
+          mkdir -p npm/platforms/linux-arm64/bin
+          cp target/release/keybackcon npm/platforms/linux-arm64/bin/keybackcon
+          chmod +x npm/platforms/linux-arm64/bin/keybackcon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keybackcon-linux-arm64
+          path: npm/platforms/linux-arm64/bin/keybackcon
+
+  publish:
+    needs: [build-x64, build-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: keybackcon-linux-x64
+          path: npm/platforms/linux-x64/bin
+      - uses: actions/download-artifact@v4
+        with:
+          name: keybackcon-linux-arm64
+          path: npm/platforms/linux-arm64/bin
+      - run: chmod +x npm/platforms/linux-*/bin/keybackcon
+      - name: Sincronizar versiones con el tag
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          export VER
+          node -e '
+            const fs = require("fs");
+            for (const p of ["npm/package.json", "npm/platforms/linux-x64/package.json", "npm/platforms/linux-arm64/package.json"]) {
+              const j = JSON.parse(fs.readFileSync(p, "utf8"));
+              j.version = process.env.VER;
+              if (j.optionalDependencies) {
+                for (const k of Object.keys(j.optionalDependencies)) j.optionalDependencies[k] = process.env.VER;
+              }
+              fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+            }
+          '
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Publicar paquetes de plataforma
+        run: |
+          npm publish ./npm/platforms/linux-x64 --access public
+          npm publish ./npm/platforms/linux-arm64 --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publicar meta-paquete
+        run: npm publish ./npm --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

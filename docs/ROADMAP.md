@@ -11,3 +11,4 @@
 - [ ] Modo "seguir escritorio" (leer acento GTK y aplicarlo) — solo si se pide
 - [x] v2.2.0 — comando restore, lanzador GUI por paquete, GUI acabada y empaquetado al día
 - [x] v2.2.1 — restore systemd `/usr/bin`, udev argv seguro, CLI endurecido, CI MSRV
+- [x] v2.3.0 — parada de animación sin bloqueos (zombies), estado atómico, validación estricta de argumentos, `info --json`, cap de FPS a 60, unificación de la semántica de `stop` (systemd y CLI), rediseño de la bandeja (menú completo, sin polling bloqueante, cierre limpio), autoversionado con git-cliff en CI y publicación npm (`npm install -g keybackcon` con regla udev y unidades systemd automáticas)

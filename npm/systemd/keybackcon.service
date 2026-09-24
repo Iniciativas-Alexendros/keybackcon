@@ -1,0 +1,11 @@
+[Unit]
+Description=Keyboard Backlight Controls — restaura tu color al iniciar sesión
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=__KEYBACKCON_BIN__ restore
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

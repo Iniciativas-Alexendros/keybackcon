@@ -15,12 +15,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: La versión del tag debe coincidir con Cargo.toml
+      - name: El tag debe coincidir con todas las fuentes de versión
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          VER="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*\"([^\"]+)\".*/\1/')"
-          echo "tag=$TAG cargo=$VER"
-          [ "$TAG" = "$VER" ] || { echo "El tag v$TAG no coincide con Cargo.toml ($VER)"; exit 1; }
+          fail=0
+          check() {
+            local name="$1" file="$2" actual="$3"
+            echo "$name: $actual (tag: $TAG)"
+            [ "$actual" = "$TAG" ] || fail=1
+          }
+          check cargo   Cargo.toml              "$(grep -m1 '^version' Cargo.toml | sed -E 's/.*\"([^\"]+)\".*/\1/')"
+          check gui     gui/__init__.py         "$(grep -m1 '^__version__' gui/__init__.py | sed -E 's/.*\"([^\"]+)\".*/\1/')"
+          check pkbuild packaging/aur/PKGBUILD "$(grep -m1 '^pkgver=' packaging/aur/PKGBUILD | sed -E 's/pkgver=//')"
+          [ "$fail" = 0 ] || { echo "El tag v$TAG no coincide con alguna fuente de versión"; exit 1; }
       - run: cargo test -- --test-threads=1
       - run: cargo build --release
       - run: bash scripts/smoke.sh

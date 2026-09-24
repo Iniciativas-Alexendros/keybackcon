@@ -1,7 +1,7 @@
 # Keyboard Backlight Controls (`keybackcon`)
 
-[![CI](https://github.com/Iniciativas-Alexendros/keybackcon/actions/workflows/ci.yml/badge.svg)](https://github.com/Iniciativas-Alexendros/keybackcon/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Iniciativas-Alexendros/keybackcon)](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
+[![CI](https://github.com/Soluciones-Alexendros/keybackcon/actions/workflows/ci.yml/badge.svg)](https://github.com/Soluciones-Alexendros/keybackcon/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Soluciones-Alexendros/keybackcon)](https://github.com/Soluciones-Alexendros/keybackcon/releases)
 ![Rust](https://img.shields.io/badge/rust-sin%20dependencias-orange)
 ![GTK4](https://img.shields.io/badge/GUI-GTK4%20%2B%20Adwaita-blue)
 ![License](https://img.shields.io/badge/licencia-MIT-green)
@@ -25,12 +25,17 @@ La mesa de luz vive también en la **bandeja del sistema**
 
 ## Instalación
 
-1. **Ubuntu/Debian (recomendado, `.deb`):** descarga el `.deb` de cada
-   [release](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
+1. **npm (un comando, cualquier distro):** `npm install -g keybackcon`
+   instala el binario precompilado (Linux x86_64/arm64) y configura
+   automáticamente la regla udev y las unidades systemd de usuario
+   (restauración al login incluida). Omite la regla udev con
+   `KEYBACKCON_SKIP_UDEV=1 npm install -g keybackcon`.
+2. **Ubuntu/Debian (`.deb`):** descarga el `.deb` de cada
+   [release](https://github.com/Soluciones-Alexendros/keybackcon/releases)
    e instala con `sudo apt install ./keybackcon_X.Y.Z-1_amd64.deb`
    (binario, GUI, icono, regla udev y unidades de usuario).
-2. **Arch Linux (AUR):** `yay -S keybackcon` (o `paru -S keybackcon`).
-3. **Script local (`~/.local`):** `./scripts/install.sh`
+3. **Arch Linux (AUR):** `yay -S keybackcon` (o `paru -S keybackcon`).
+4. **Script local (`~/.local`):** `./scripts/install.sh`
    (pide sudo una vez para la regla udev).
 
 Cada release trae además el tarball `keybackcon-vX.Y.Z-linux-x86_64.tar.gz`,
