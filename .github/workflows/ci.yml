@@ -1,34 +1,34 @@
 name: CI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  rust:
+  quality:
+    name: quality
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo fmt --check
-      - run: cargo clippy -- -D warnings
-      - run: cargo test -- --test-threads=1
-      - run: cargo build --release
-
-  msrv:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.87
-      - run: cargo test -- --test-threads=1
-
-  gui-packaging:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: python3 -m py_compile gui/*.py
-      - run: bash scripts/smoke.sh
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Rustdoc
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+      - name: GUI py_compile
+        run: python3 -m py_compile gui/*.py
       - name: shellcheck
         run: |
           if command -v shellcheck >/dev/null; then
@@ -42,6 +42,52 @@ jobs:
             bash -n packaging/debian/prerm
             bash -n packaging/aur/PKGBUILD
           fi
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -- --test-threads=1
+
+  msrv:
+    name: msrv
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.87
+      - run: cargo test -- --test-threads=1
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keybackcon-linux
+          path: target/release/keybackcon
+          if-no-files-found: error
+
+  smoke:
+    name: smoke
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: keybackcon-linux
+          path: target/release
+      - run: chmod +x target/release/keybackcon
+      - run: bash scripts/smoke.sh
       - name: desktop-file-validate
         run: |
           if command -v desktop-file-validate >/dev/null; then
