@@ -1,16 +1,52 @@
 import os
+
+try:
+    from gui import load, log_exc
+except ImportError:  # ejecución directa: gui/ en sys.path
+    import importlib
+    import sys
+
+    def load(nombre):
+        return importlib.import_module(nombre)
+
+    def log_exc(contexto):
+        tipo, exc, _tb = sys.exc_info()
+        print(f"keybackcon-gui: {contexto}: {tipo.__name__}: {exc}",
+              file=sys.stderr)
+
 try:
     import gi
+
     gi.require_version("Adw", "1")
     from gi.repository import Adw
 except Exception:
+    log_exc("Adw")
     Adw = None
 
 
 VALID_MODES = ("system", "light", "dark")
 SCHEMA_ID = "org.iniciativas.keybackcon"
 THEME_KEY = "theme"
-_cached_settings = None
+_schema_cache = {}
+
+
+def lookup_settings(schema_id):
+    """Gio.Settings para schema_id instalado, o None si no está disponible."""
+    cached = _schema_cache.get(schema_id)
+    if cached is not None:
+        return cached
+    try:
+        from gi.repository import Gio
+
+        source = Gio.SettingsSchemaSource.get_default()
+        if source is None or source.lookup(schema_id, True) is None:
+            return None
+        settings = Gio.Settings.new(schema_id)
+    except Exception:
+        log_exc(f"gsettings {schema_id}")
+        return None
+    _schema_cache[schema_id] = settings
+    return settings
 
 
 def _config_file():
@@ -18,39 +54,22 @@ def _config_file():
     return os.path.join(base, "keybackcon", "theme")
 
 
-def _gsettings():
-    global _cached_settings
-    if _cached_settings is not None:
-        return _cached_settings
-    try:
-        from gi.repository import Gio
-        source = Gio.SettingsSchemaSource.get_default()
-        if source is None:
-            return None
-        if source.lookup(SCHEMA_ID, True) is None:
-            return None
-        _cached_settings = Gio.Settings.new(SCHEMA_ID)
-        return _cached_settings
-    except Exception:
-        return None
-
-
 def get_theme() -> str:
-    settings = _gsettings()
+    settings = lookup_settings(SCHEMA_ID)
     if settings is not None:
         try:
             mode = settings.get_string(THEME_KEY).strip().lower()
             if mode in VALID_MODES:
                 return mode
         except Exception:
-            pass
+            log_exc("leer tema")
     try:
         with open(_config_file()) as f:
             mode = f.read().strip().lower()
             if mode in VALID_MODES:
                 return mode
     except Exception:
-        pass
+        pass  # archivo ausente: es la vía normal, no un error
     return "system"
 
 
@@ -68,7 +87,7 @@ def _apply(mode):
         else:
             manager.set_color_scheme(Adw.ColorScheme.DEFAULT)
     except Exception:
-        pass
+        log_exc("aplicar tema")
     return mode
 
 
@@ -82,14 +101,14 @@ def set_theme(mode: str):
         with open(path, "w") as f:
             f.write(normalized + "\n")
     except Exception:
-        pass
-    settings = _gsettings()
+        log_exc("guardar tema")
+    settings = lookup_settings(SCHEMA_ID)
     if settings is not None:
         try:
             settings.set_string(THEME_KEY, normalized)
             settings.sync()
         except Exception:
-            pass
+            log_exc("tema en gsettings")
     return _apply(normalized)
 
 

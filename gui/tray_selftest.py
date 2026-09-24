@@ -143,6 +143,9 @@ class FakeClient:
     def get_state_file(self):
         return (self._color, self._brightness)
 
+    def animation_running(self):
+        return None
+
     def set_color(self, hex):
         self.calls.append(("set_color", str(hex)))
 
@@ -158,6 +161,10 @@ class FakeClient:
     def stop(self):
         self.calls.append(("stop",))
         return "stopped"
+
+    def restore(self):
+        self.calls.append(("restore",))
+        return "restored"
 
     def clear(self):
         del self.calls[:]
@@ -180,20 +187,38 @@ def norm_label(s):
     return "".join(c for c in t if unicodedata.category(c) != "Mn")
 
 
-def menu_children(ind):
+def root_menu(ind):
     try:
         m = getattr(ind, "_menu", None)
         if m is not None:
-            return list(m.get_children())
+            return m
     except Exception:
         pass
     try:
-        m = ind._indicator.get_menu()
-        if m is not None:
-            return list(m.get_children())
+        return ind._indicator.get_menu()
+    except Exception:
+        return None
+
+
+def menu_children(menu):
+    try:
+        if menu is not None:
+            return list(menu.get_children())
     except Exception:
         pass
     return []
+
+
+def iter_items(menu):
+    for it in menu_children(menu):
+        yield it
+        try:
+            sub = it.get_submenu()
+        except Exception:
+            sub = None
+        if sub is not None:
+            for hijo in iter_items(sub):
+                yield hijo
 
 
 def label_of(item):
@@ -219,7 +244,7 @@ def label_of(item):
 
 def find_item(ind, key):
     want = norm_label(key)
-    for it in menu_children(ind):
+    for it in iter_items(root_menu(ind)):
         lab = norm_label(label_of(it))
         if want and want in lab:
             return it
@@ -235,7 +260,7 @@ def activate(item):
     try:
         item.activate()
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -261,41 +286,19 @@ def set_brightness_state(ind, fake, value):
         pass
 
 
-class ExitPatch:
-    def __init__(self):
+class QuitPatch:
+    """Inyecta el callback de salida limpia (sustituto de os._exit)."""
+
+    def __init__(self, ind):
         self.hit = {}
-        self._orig_exit = None
-        self._gtk = None
-        self._orig_quit = None
+        self._ind = ind
 
     def __enter__(self):
-        import os as _os
-        self._orig_exit = _os._exit
-
-        def _fake(code=0):
-            self.hit["exit"] = True
-            raise RuntimeError("exit-intercepted")
-
-        _os._exit = _fake
-        try:
-            self._gtk = Gtk
-            self._orig_quit = Gtk.main_quit
-            Gtk.main_quit = lambda *a, **k: self.hit.setdefault("main_quit", True)
-        except Exception:
-            pass
+        self._ind._on_quit = lambda: self.hit.setdefault("quit_cb", True)
         return self.hit
 
     def __exit__(self, *exc):
-        import os as _os
-        try:
-            _os._exit = self._orig_exit
-        except Exception:
-            pass
-        try:
-            if self._gtk is not None and self._orig_quit is not None:
-                self._gtk.main_quit = self._orig_quit
-        except Exception:
-            pass
+        self._ind._on_quit = None
         return False
 
 
@@ -379,6 +382,35 @@ def check_menu_apagar():
     return report("menu_apagar", got is not None, "calls=%s" % (fake.calls,))
 
 
+def check_menu_restaurar():
+    ind, fake = make_indicator()
+    fake.clear()
+    item = find_item(ind, "restaurar")
+    if item is None:
+        return report("menu_restaurar", False, "item Restaurar no encontrado")
+    try:
+        activate(item)
+    except Exception as e:
+        return report("menu_restaurar", False, e)
+    got = last_call(fake, "restore")
+    return report("menu_restaurar", got is not None, "calls=%s" % (fake.calls,))
+
+
+def check_menu_color_rojo():
+    ind, fake = make_indicator()
+    fake.clear()
+    item = find_item(ind, "rojo")
+    if item is None:
+        return report("menu_color_rojo", False, "item Rojo no encontrado")
+    try:
+        activate(item)
+    except Exception as e:
+        return report("menu_color_rojo", False, e)
+    got = last_call(fake, "set_color")
+    ok = got is not None and str(got[1]).strip().lstrip("#").lower() == "ff0000"
+    return report("menu_color_rojo", ok, "calls=%s" % (fake.calls,))
+
+
 def check_menu_preferencias():
     hit = {}
     ind, fake = make_indicator(prefs=lambda: hit.setdefault("prefs", True), about=lambda: None)
@@ -412,33 +444,50 @@ def check_menu_salir():
         return report("menu_salir", False, "item Salir no encontrado")
     fake.clear()
     try:
-        with ExitPatch():
-            try:
-                activate(item)
-            except RuntimeError as e:
-                if str(e) != "exit-intercepted":
-                    raise
-            except SystemExit:
-                pass
+        with QuitPatch(ind) as hit:
+            activate(item)
+        ok = hit.get("quit_cb") is True and last_call(fake, "stop") is not None
+        return report("menu_salir", ok, "quit_cb=%s calls=%s" % (hit.get("quit_cb"), fake.calls))
     except Exception as e:
         return report("menu_salir", False, e)
-    got = last_call(fake, "stop")
-    return report("menu_salir", got is not None, "calls=%s" % (fake.calls,))
 
 
-def check_nivel(name, start, key, expected):
-    ind, fake = make_indicator(brightness=start)
-    set_brightness_state(ind, fake, start)
-    item = find_item(ind, key)
-    if item is None:
-        return report(name, False, "item %s no encontrado" % key)
+def check_quit_stop():
+    ind, fake = make_indicator()
+    fake.clear()
     try:
-        activate(item)
+        with QuitPatch(ind) as hit:
+            ind.quit()
+        ok = hit.get("quit_cb") is True and last_call(fake, "stop") is not None
+        return report("quit_stop", ok, "quit_cb=%s calls=%s" % (hit.get("quit_cb"), fake.calls))
     except Exception as e:
-        return report(name, False, e)
-    got = last_call(fake, "set_brightness")
-    val = got[1] if got is not None else None
-    return report(name, val == expected, "esperado set_brightness(%s) obtenido %s calls=%s" % (expected, val, fake.calls))
+        return report("quit_stop", False, e)
+
+
+def check_slider_continuo():
+    ind, fake = make_indicator(brightness=33)
+    scale = getattr(ind, "_scale", None)
+    if scale is None:
+        return report("slider_continuo", False, "sin Gtk.Scale")
+    try:
+        adj = scale.get_adjustment()
+        bajo, alto = adj.get_lower(), adj.get_upper()
+    except Exception as e:
+        return report("slider_continuo", False, e)
+    ok = bajo == 0 and alto == 100
+    return report("slider_continuo", ok, "rango %s-%s" % (bajo, alto))
+
+
+def check_slider_valor():
+    ind, fake = make_indicator(brightness=50)
+    fake.clear()
+    try:
+        ind._scale.set_value(42)
+    except Exception as e:
+        return report("slider_valor", False, e)
+    ok = ind._brightness == 42 and last_call(fake, "set_brightness") is None
+    return report("slider_valor", ok,
+                  "brightness=%s calls=%s (la escritura va con retardo)" % (ind._brightness, fake.calls))
 
 
 def check_scroll(name, start, steps, expected):
@@ -458,6 +507,17 @@ def check_scroll(name, start, steps, expected):
     got = last_call(fake, "set_brightness")
     val = got[1] if got is not None else None
     return report(name, val == expected, "esperado set_brightness(%s) obtenido %s calls=%s" % (expected, val, fake.calls))
+
+
+def check_modo_activo():
+    ind, fake = make_indicator()
+    try:
+        ind.update_state("breathe", "ffffff", 100)
+        ok = bool(ind._mode_items["breathe"].get_active())
+        ok = ok and not bool(ind._mode_items["fijar"].get_active())
+    except Exception as e:
+        return report("modo_activo", False, e)
+    return report("modo_activo", ok, "radio de modo no sincronizado")
 
 
 def expected_png(color_hex, mode):
@@ -489,40 +549,25 @@ def check_update_state(mode, color):
     return report(name, ok, "png ausente %s" % path)
 
 
-def check_quit_stop():
-    ind, fake = make_indicator()
-    fake.clear()
-    try:
-        with ExitPatch():
-            try:
-                ind.quit()
-            except RuntimeError as e:
-                if str(e) != "exit-intercepted":
-                    raise
-            except SystemExit:
-                pass
-    except Exception as e:
-        return report("quit_stop", False, e)
-    got = last_call(fake, "stop")
-    return report("quit_stop", got is not None, "calls=%s" % (fake.calls,))
-
-
 def main():
     check_no_ayatana()
     check_menu_abrir()
+    check_slider_continuo()
+    check_slider_valor()
     check_menu_fijar()
     check_menu_respirar()
     check_menu_arcoiris()
     check_menu_apagar()
+    check_menu_color_rojo()
+    check_menu_restaurar()
     check_menu_preferencias()
     check_menu_acerca()
     check_menu_salir()
-    check_nivel("nivel_subir_80_100", 80, "subir", 100)
-    check_nivel("nivel_bajar_80_75", 80, "bajar", 75)
-    check_nivel("nivel_bajar_10_10", 10, "bajar", 10)
-    check_nivel("nivel_subir_100_100", 100, "subir", 100)
-    check_scroll("scroll_subir_80_100", 80, 1, 100)
+    check_scroll("scroll_subir_80_85", 80, 1, 85)
     check_scroll("scroll_bajar_80_75", 80, -1, 75)
+    check_scroll("scroll_subir_100_100", 100, 1, 100)
+    check_scroll("scroll_bajar_0_0", 0, -1, 0)
+    check_modo_activo()
     check_update_state("fijar", "ff0000")
     check_update_state("breathe", "00ff00")
     check_update_state("rainbow", "0000ff")

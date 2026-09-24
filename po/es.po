@@ -193,26 +193,6 @@ msgstr "Movimiento {mode} en marcha"
 msgid "Luz fijada de nuevo"
 msgstr "Luz fijada de nuevo"
 
-#: gui/brightness.py:1
-msgid "Mínimo"
-msgstr "Mínimo"
-
-#: gui/brightness.py:1
-msgid "Bajo"
-msgstr "Bajo"
-
-#: gui/brightness.py:1
-msgid "Medio"
-msgstr "Medio"
-
-#: gui/brightness.py:1
-msgid "Alto"
-msgstr "Alto"
-
-#: gui/brightness.py:1
-msgid "Máximo"
-msgstr "Máximo"
-
 #: gui/window.py:700
 msgid "Sin acceso al teclado"
 msgstr "Sin acceso al teclado"
@@ -244,3 +224,43 @@ msgstr "Aplica el último color guardado."
 #: gui/settings.py:262
 msgid "Dispositivo"
 msgstr "Dispositivo"
+
+#: gui/tray.py:211
+msgid "Abrir ventana"
+msgstr "Abrir ventana"
+
+#: gui/tray.py:221
+msgid "Brillo"
+msgstr "Brillo"
+
+#: gui/tray.py:223
+msgid "Colores"
+msgstr "Colores"
+
+#: gui/tray.py:264
+msgid "Tu tono…"
+msgstr "Tu tono…"
+
+#: gui/tray.py:226
+msgid "Animaciones"
+msgstr "Animaciones"
+
+#: gui/tray.py:231
+msgid "Apagar"
+msgstr "Apagar"
+
+#: gui/tray.py:236
+msgid "Restaurar"
+msgstr "Restaurar"
+
+#: gui/tray.py:243
+msgid "Preferencias"
+msgstr "Preferencias"
+
+#: gui/tray.py:254
+msgid "Salir"
+msgstr "Salir"
+
+#: gui/window.py:819
+msgid "Permiso no instalado (pkexec cancelado o sin autorización)."
+msgstr "Permiso no instalado (pkexec cancelado o sin autorización)."

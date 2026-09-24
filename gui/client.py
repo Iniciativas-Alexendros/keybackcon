@@ -1,8 +1,18 @@
+import json
 import os
 import shutil
 import signal
 import subprocess
-import time
+
+try:
+    from gui import log_exc
+except ImportError:  # ejecución directa: gui/ en sys.path
+    def log_exc(contexto):
+        import sys
+
+        tipo, exc, _tb = sys.exc_info()
+        print(f"keybackcon-gui: {contexto}: {tipo.__name__}: {exc}",
+              file=sys.stderr)
 
 
 def find_binary():
@@ -82,31 +92,64 @@ class KeybackconClient:
             )
         return proc
 
-    def _stop_child(self) -> None:
+    def stop_animation(self) -> None:
+        """Mata el proceso de animación lanzado, con tope de ~1 s.
+
+        La animación arranca en su propio grupo de procesos
+        (``start_new_session``), así que aquí se mata el grupo entero.
+        """
         proc = self._proc
-        if proc is not None and proc.poll() is None:
-            try:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    proc.wait()
-            except Exception:
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
         self._proc = None
+        if proc is None:
+            return
+        try:
+            pgid = os.getpgid(proc.pid)
+        except (ProcessLookupError, OSError):
+            pgid = None
+        # Solo matamos el grupo si el hijo es líder de sesión (es decir,
+        # lo lanzamos nosotros con start_new_session); si no, terminate().
+        propio_grupo = pgid is not None and pgid == proc.pid
+        try:
+            if propio_grupo:
+                os.killpg(pgid, signal.SIGTERM)
+            elif proc.poll() is None:
+                proc.terminate()
+        except (ProcessLookupError, PermissionError, OSError):
+            pass  # carrera de salida: el proceso ya no existe
+        try:
+            proc.wait(timeout=1)
+            return
+        except subprocess.TimeoutExpired:
+            pass  # sobrevive al TERM: escalamos a SIGKILL
+        except (ChildProcessError, OSError):
+            return  # zombie ya cosechado por otro waiter
+        try:
+            if propio_grupo:
+                os.killpg(pgid, signal.SIGKILL)
+            elif proc.poll() is None:
+                proc.kill()
+        except (ProcessLookupError, PermissionError, OSError):
+            pass  # carrera de salida: el proceso ya no existe
+        try:
+            proc.wait(timeout=1)
+        except Exception:
+            log_exc("cosechar animación")  # el kernel recogerá el zombie
 
     def info(self) -> dict:
-        proc = self._run(["info"])
-        info: dict = {}
-        for line in proc.stdout.splitlines():
-            if ":" in line:
-                k, v = line.split(":", 1)
-                info[k.strip()] = v.strip()
-        return info
+        """`info --json` como dict. Lanza KeybackconError si el binario falla.
+
+        Si el binario es viejo y no habla JSON, devuelve {} para que la
+        interfaz muestre «desconocido» en vez de romperse.
+        """
+        proc = self._run(["info", "--json"])
+        try:
+            lineas = (proc.stdout or "").strip().splitlines()
+            data = json.loads(lineas[-1])
+        except (ValueError, IndexError):
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        return data
 
     def set_color(self, hex: str) -> None:
         self._run(["set", hex])
@@ -115,10 +158,13 @@ class KeybackconClient:
         self._run(["brightness", str(pct)])
 
     def animation(self, mode: str) -> None:
-        self._stop_child()
+        self.stop_animation()
         self._run(["firmware-effects", "off"])
         try:
-            self._proc = subprocess.Popen([self._bin, "animation", mode])
+            self._proc = subprocess.Popen(
+                [self._bin, "animation", mode],
+                start_new_session=True,
+            )
         except FileNotFoundError:
             raise KeybackconError(
                 f"No encuentro el binario ({self._bin}). Instálalo primero."
@@ -127,12 +173,12 @@ class KeybackconClient:
             raise KeybackconError(f"El teclado no respondió: {e}")
 
     def stop(self) -> str:
-        self._stop_child()
+        self.stop_animation()
         proc = self._run(["stop"])
         return proc.stdout.strip()
 
     def restore(self) -> str:
-        self._stop_child()
+        self.stop_animation()
         proc = self._run(["restore"])
         return proc.stdout.strip()
 

@@ -3,32 +3,28 @@ import os
 import sys
 
 try:
-    from gui.i18n import _
-except ImportError:
-    try:
-        from .i18n import _
-    except ImportError:
-        try:
-            from i18n import _
-        except ImportError:
-            def _(s):
-                return s
+    from gui import load, log_exc, gettext_func
+except ImportError:  # ejecución directa: gui/ en sys.path
+    import importlib
 
-try:
-    from gui.client import KeybackconError
-except ImportError:
-    try:
-        from .client import KeybackconError
-    except ImportError:
-        from client import KeybackconError
+    def load(nombre):
+        return importlib.import_module(nombre)
 
-try:
-    from gui.brightness import avanzar, pct_a_nivel, pct_de_nivel
-except ImportError:
-    try:
-        from .brightness import avanzar, pct_a_nivel, pct_de_nivel
-    except ImportError:
-        from brightness import avanzar, pct_a_nivel, pct_de_nivel
+    def gettext_func():
+        mod = importlib.import_module("i18n")
+        return mod._
+
+    def log_exc(contexto):
+        tipo, exc, _tb = sys.exc_info()
+        print(f"keybackcon-gui: {contexto}: {tipo.__name__}: {exc}",
+              file=sys.stderr)
+
+_ = gettext_func()
+KeybackconError = load("client").KeybackconError
+_colors = load("colors")
+hex_to_rgb = _colors.hex_to_rgb
+hsv_to_rgb = _colors.hsv_to_rgb
+COLORES = _colors.COLORES
 
 
 class TrayUnavailable(Exception):
@@ -41,15 +37,22 @@ try:
     gi.require_version("Gtk", "3.0")
     gi.require_version("AyatanaAppIndicator3", "0.1")
     from gi.repository import AyatanaAppIndicator3, Gtk, GLib
+except Exception as exc:
+    raise TrayUnavailable(
+        "Bandeja no disponible: instala gir1.2-ayatanaappindicator3-0.1 (%s)"
+        % exc
+    ) from exc
+
+try:
     import cairo
 except Exception as exc:
     raise TrayUnavailable(
-        "AyatanaAppIndicator3 0.1 no disponible: %s" % exc
+        "Bandeja no disponible: instala python3-cairo (%s)" % exc
     ) from exc
 
 
 MODES = ("fijar", "breathe", "rainbow", "off")
-LEVEL_STEP = 1
+BRILLO_PASO = 5
 
 
 def _normalize_hex(color_hex):
@@ -75,29 +78,6 @@ def _clamp_brightness(value):
     except Exception:
         v = 100
     return max(0, min(100, v))
-
-
-def _hex_to_rgb(h):
-    return (int(h[0:2], 16) / 255.0, int(h[2:4], 16) / 255.0, int(h[4:6], 16) / 255.0)
-
-
-def _hsv_to_rgb(h, s, v):
-    c = v * s
-    x = c * (1 - abs((h / 60.0) % 2 - 1))
-    m = v - c
-    if h < 60:
-        r, g, b = c, x, 0.0
-    elif h < 120:
-        r, g, b = x, c, 0.0
-    elif h < 180:
-        r, g, b = 0.0, c, x
-    elif h < 240:
-        r, g, b = 0.0, x, c
-    elif h < 300:
-        r, g, b = x, 0.0, c
-    else:
-        r, g, b = c, 0.0, x
-    return r + m, g + m, b + m
 
 
 def _cache_dir():
@@ -133,7 +113,7 @@ def render_tray_icon(color_hex, mode):
         ctx.line_to(cx + 10, cy - 10)
         ctx.stroke()
     else:
-        r, g, b = _hex_to_rgb(color_hex)
+        r, g, b = hex_to_rgb(color_hex)
         if mode == "breathe":
             ctx.set_source_rgba(r, g, b, 0.25)
             ctx.arc(cx, cy, 26, 0, 2 * math.pi)
@@ -144,7 +124,7 @@ def render_tray_icon(color_hex, mode):
             ctx.stroke()
         if mode == "rainbow":
             for i in range(6):
-                hr, hg, hb = _hsv_to_rgb(i * 60.0, 1.0, 1.0)
+                hr, hg, hb = hsv_to_rgb(i * 60.0, 1.0, 1.0)
                 ctx.set_source_rgb(hr, hg, hb)
                 ctx.set_line_width(4.0)
                 a0 = math.radians(i * 60 + 4)
@@ -166,20 +146,25 @@ def render_tray_icon(color_hex, mode):
 
 
 class TrayIndicator:
-    def __init__(self, client, on_toggle_window, on_preferences=None, on_about=None):
+    def __init__(self, client, on_toggle_window, on_preferences=None,
+                 on_about=None, on_quit=None):
         self._client = client
         self._on_toggle_window = on_toggle_window
         self._on_preferences = on_preferences
         self._on_about = on_about
+        self._on_quit = on_quit
         self._mode = "fijar"
         self._color = "ffffff"
         self._brightness = 100
+        self._syncing_menu = False
+        self._syncing_scale = False
+        self._bright_source = None
         try:
             color, pct = client.get_state_file()
             self._color = _normalize_hex(color)
-            self._brightness = pct_de_nivel(pct_a_nivel(pct))
+            self._brightness = _clamp_brightness(pct)
         except Exception:
-            pass
+            log_exc("estado inicial de bandeja")
         self._pending = []
         self._visible = True
         self._indicator = AyatanaAppIndicator3.Indicator.new(
@@ -194,7 +179,7 @@ class TrayIndicator:
         try:
             self._indicator.connect("scroll-event", self._on_scroll)
         except Exception:
-            pass
+            log_exc("scroll del indicador")
         for signal in ("activate", "activate-event"):
             try:
                 self._indicator.connect(signal, self._on_activate_signal)
@@ -204,7 +189,9 @@ class TrayIndicator:
         try:
             GLib.timeout_add_seconds(2, self._tick)
         except Exception:
-            pass
+            log_exc("temporizador de bandeja")
+
+    # --- construcción del menú -------------------------------------------
 
     def _build_menu(self):
         menu = Gtk.Menu()
@@ -212,34 +199,20 @@ class TrayIndicator:
         self._open_item.connect("activate", self._ui_open)
         menu.append(self._open_item)
         menu.append(Gtk.SeparatorMenuItem())
-        self._fijar_item = Gtk.MenuItem.new_with_label(_("Fijar color"))
-        self._fijar_item.connect("activate", self._do_fijar)
-        menu.append(self._fijar_item)
-        self._breathe_item = Gtk.MenuItem.new_with_label(_("Respirar"))
-        self._breathe_item.connect(
-            "activate", lambda *a: self._do_animation("breathe")
-        )
-        menu.append(self._breathe_item)
-        self._rainbow_item = Gtk.MenuItem.new_with_label(_("Arcoíris"))
-        self._rainbow_item.connect(
-            "activate", lambda *a: self._do_animation("rainbow")
-        )
-        menu.append(self._rainbow_item)
+        menu.append(self._build_brightness_item())
+        self._colors_item = Gtk.MenuItem.new_with_label(_("Colores"))
+        self._colors_item.set_submenu(self._build_colors_menu())
+        menu.append(self._colors_item)
+        self._anims_item = Gtk.MenuItem.new_with_label(_("Animaciones"))
+        self._anims_item.set_submenu(self._build_modes_menu())
+        menu.append(self._anims_item)
         self._off_item = Gtk.MenuItem.new_with_label(_("Apagar"))
         self._off_item.connect("activate", self._do_off)
         menu.append(self._off_item)
         menu.append(Gtk.SeparatorMenuItem())
-        self._bright_up_item = Gtk.MenuItem.new_with_label(_("Subir brillo"))
-        self._bright_up_item.connect(
-            "activate", lambda *a: self._do_brightness(LEVEL_STEP)
-        )
-        menu.append(self._bright_up_item)
-        self._bright_down_item = Gtk.MenuItem.new_with_label(_("Bajar brillo"))
-        self._bright_down_item.connect(
-            "activate", lambda *a: self._do_brightness(-LEVEL_STEP)
-        )
-        menu.append(self._bright_down_item)
-        menu.append(Gtk.SeparatorMenuItem())
+        self._restore_item = Gtk.MenuItem.new_with_label(_("Restaurar"))
+        self._restore_item.connect("activate", self._do_restore)
+        menu.append(self._restore_item)
         self._prefs_item = Gtk.MenuItem.new_with_label(_("Preferencias"))
         if self._on_preferences is None:
             self._prefs_item.set_sensitive(False)
@@ -258,37 +231,152 @@ class TrayIndicator:
         menu.show_all()
         self._menu = menu
         self._indicator.set_menu(menu)
+        self._sync_menus()
         try:
             self._indicator.set_secondary_activate_target(self._open_item)
         except Exception:
-            pass
+            log_exc("activación secundaria")
+
+    def _build_brightness_item(self):
+        self._scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0, 100, 1
+        )
+        self._scale.set_size_request(170, -1)
+        self._scale.set_draw_value(False)
+        self._scale.set_value(self._brightness)
+        self._scale.connect("value-changed", self._on_scale_brillo)
+        caja = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        caja.pack_start(Gtk.Label(label=_("Brillo")), False, False, 6)
+        caja.pack_start(self._scale, True, True, 6)
+        item = Gtk.MenuItem()
+        item.add(caja)
+        return item
+
+    def _build_colors_menu(self):
+        submenu = Gtk.Menu()
+        self._color_items = {}
+        grupo = None
+        for nombre, hexv in COLORES:
+            if grupo is None:
+                item = Gtk.RadioMenuItem.new_with_label(None, _(nombre))
+            else:
+                item = Gtk.RadioMenuItem.new_with_label_from_widget(grupo, _(nombre))
+            grupo = item
+            item.connect("activate", self._on_color_activado, hexv)
+            submenu.append(item)
+            self._color_items[hexv] = item
+        submenu.append(Gtk.SeparatorMenuItem())
+        self._custom_item = Gtk.MenuItem.new_with_label(_("Tu tono…"))
+        self._custom_item.connect("activate", self._do_custom_tone)
+        submenu.append(self._custom_item)
+        submenu.show_all()
+        return submenu
+
+    def _build_modes_menu(self):
+        submenu = Gtk.Menu()
+        self._mode_items = {}
+        grupo = None
+        for key, label in (
+            ("fijar", _("Fijar")),
+            ("breathe", _("Respirar")),
+            ("rainbow", _("Arcoíris")),
+        ):
+            if grupo is None:
+                item = Gtk.RadioMenuItem.new_with_label(None, label)
+            else:
+                item = Gtk.RadioMenuItem.new_with_label_from_widget(grupo, label)
+            grupo = item
+            item.connect("activate", self._on_mode_activado, key)
+            submenu.append(item)
+            self._mode_items[key] = item
+        submenu.show_all()
+        return submenu
+
+    def _sync_menus(self):
+        self._syncing_menu = True
+        try:
+            modo = self._mode if self._mode in self._mode_items else "fijar"
+            for key, item in self._mode_items.items():
+                item.set_active(key == modo)
+            for hexv, item in self._color_items.items():
+                item.set_active(hexv == self._color)
+        except Exception:
+            log_exc("sincronizar menús")
+        finally:
+            self._syncing_menu = False
+
+    # --- infraestructura: reintentos, icono, salida limpia ---------------
 
     def _safe(self, fn):
         try:
             fn()
         except KeybackconError:
             self._pending.append(fn)
-        except Exception as exc:
-            print("keybackcon tray: %s" % exc, file=sys.stderr)
+        except Exception:
+            log_exc("acción de bandeja")
+
+    def _reintentar_pendientes(self):
+        if not self._pending:
+            return
+        rest = []
+        for fn in self._pending:
+            try:
+                fn()
+            except KeybackconError:
+                rest.append(fn)
+            except Exception:
+                log_exc("reintento de bandeja")
+        self._pending = rest
 
     def _tick(self):
-        if self._pending:
-            rest = []
-            for fn in self._pending:
-                try:
-                    fn()
-                except KeybackconError:
-                    rest.append(fn)
-                except Exception as exc:
-                    print("keybackcon tray: %s" % exc, file=sys.stderr)
-            self._pending = rest
+        self._reintentar_pendientes()
+        self._sync_desde_archivos()
+        return True
+
+    def _sync_desde_archivos(self):
+        """Sincroniza con archivo de estado + pidfile (nunca subprocess)."""
+        try:
+            color, pct = self._client.get_state_file()
+        except Exception:
+            log_exc("estado de bandeja")
+            return True
+        color = _normalize_hex(color)
+        pct = _clamp_brightness(pct)
+        cambio = False
+        if color != self._color:
+            self._color = color
+            cambio = True
+        if pct != self._brightness and not self._syncing_scale:
+            self._brightness = pct
+            self._syncing_scale = True
+            try:
+                self._scale.set_value(pct)
+            except Exception:
+                log_exc("sincronizar brillo")
+            finally:
+                self._syncing_scale = False
+        try:
+            pid = self._client.animation_running()
+        except Exception:
+            log_exc("pid de animación")
+            pid = None
+        if pid:
+            if self._mode in ("fijar", "off"):
+                self._mode = "breathe"
+                cambio = True
+        elif self._mode in ("breathe", "rainbow"):
+            self._mode = "fijar"
+            cambio = True
+        if cambio:
+            self._sync_menus()
+            self._render_icon()
         return True
 
     def _render_icon(self):
         try:
             path = render_tray_icon(self._color, self._mode)
-        except Exception as exc:
-            print("keybackcon tray: %s" % exc, file=sys.stderr)
+        except Exception:
+            log_exc("icono de bandeja")
             return
         try:
             self._indicator.set_icon_full(path, "keybackcon")
@@ -296,13 +384,15 @@ class TrayIndicator:
             try:
                 self._indicator.set_icon(path)
             except Exception:
-                pass
+                log_exc("poner icono")
+
+    # --- callbacks de la UI ------------------------------------------------
 
     def _ui_open(self, *args):
         try:
             self._on_toggle_window()
         except Exception:
-            pass
+            log_exc("abrir ventana")
 
     def _on_activate_signal(self, *args):
         self._ui_open()
@@ -311,52 +401,129 @@ class TrayIndicator:
         try:
             self._on_preferences()
         except Exception:
-            pass
+            log_exc("preferencias")
 
     def _ui_about(self, *args):
         try:
             self._on_about()
         except Exception:
-            pass
+            log_exc("acerca de")
 
     def _ui_quit(self, *args):
         self.quit()
 
-    def _do_fijar(self, *args):
-        color = self._color
+    def _on_color_activado(self, item, hexv):
+        if self._syncing_menu:
+            return
+        self._do_color(hexv)
+
+    def _on_mode_activado(self, item, key):
+        if self._syncing_menu:
+            return
+        if key == "fijar":
+            self._do_fijar()
+        else:
+            self._do_animation(key)
+
+    def _on_scale_brillo(self, scale):
+        if self._syncing_scale:
+            return
+        try:
+            pct = int(round(scale.get_value()))
+        except Exception:
+            log_exc("brillo de bandeja")
+            return
+        self._brightness = pct
+        if self._bright_source is not None:
+            try:
+                GLib.source_remove(self._bright_source)
+            except Exception:
+                log_exc("cancelar brillo pendiente")
+        self._bright_source = GLib.timeout_add(150, self._aplicar_brillo, pct)
+
+    def _aplicar_brillo(self, pct):
+        self._bright_source = None
+        self._do_brightness(pct)
+        return GLib.SOURCE_REMOVE
+
+    # --- acciones sobre el teclado -----------------------------------------
+
+    def _do_color(self, hexv):
+        self._color = _normalize_hex(hexv)
         self._mode = "fijar"
+        self._sync_menus()
         self._render_icon()
-        self._safe(lambda: (self._client.stop(), self._client.set_color(color)))
+        self._safe(lambda: (self._client.stop(), self._client.set_color(self._color)))
+
+    def _do_fijar(self, *args):
+        self._do_color(self._color)
 
     def _do_animation(self, mode):
         self._mode = _normalize_mode(mode)
+        if self._mode == "off":
+            self._mode = "fijar"
+        self._sync_menus()
         self._render_icon()
         self._safe(lambda: self._client.animation(self._mode))
 
     def _do_off(self, *args):
         self._mode = "off"
+        self._sync_menus()
         self._render_icon()
         self._safe(lambda: self._client.off())
 
-    def _do_brightness(self, delta):
+    def _do_restore(self, *args):
+        def accion():
+            self._client.restore()
+            self._sync_desde_archivos()
+
+        self._safe(accion)
+
+    def _do_custom_tone(self, *args):
+        dlg = None
         try:
-            nivel = avanzar(self._brightness, delta)
+            dlg = Gtk.ColorChooserDialog(title=_("Tu tono…"))
+            respuesta = dlg.run()
+            if respuesta == Gtk.ResponseType.OK:
+                rgba = dlg.get_rgba()
+                hexv = "%02x%02x%02x" % (
+                    int(rgba.red * 255),
+                    int(rgba.green * 255),
+                    int(rgba.blue * 255),
+                )
+                self._do_color(hexv)
         except Exception:
-            nivel = 3
-        try:
-            target = pct_de_nivel(nivel)
-        except Exception:
-            target = 100
-        self._brightness = target
+            log_exc("elegir tono")
+        finally:
+            if dlg is not None:
+                try:
+                    dlg.destroy()
+                except Exception:
+                    log_exc("cerrar selector de tono")
+
+    def _do_brightness(self, target):
+        target = _clamp_brightness(target)
+        if target != self._brightness:
+            self._brightness = target
+            self._syncing_scale = True
+            try:
+                self._scale.set_value(target)
+            except Exception:
+                log_exc("ajustar brillo")
+            finally:
+                self._syncing_scale = False
         self._safe(lambda: self._client.set_brightness(target))
 
     def _on_scroll(self, _indicator, steps, _orientation, *args):
         try:
-            delta = 1 if int(steps) > 0 else -1
+            delta = BRILLO_PASO if int(steps) > 0 else -BRILLO_PASO
         except Exception:
+            log_exc("rueda de brillo")
             return True
-        self._do_brightness(delta)
+        self._do_brightness(self._brightness + delta)
         return True
+
+    # --- API pública ---------------------------------------------------------
 
     def set_visible(self, visible):
         self._visible = bool(visible)
@@ -370,31 +537,35 @@ class TrayIndicator:
                     AyatanaAppIndicator3.IndicatorStatus.PASSIVE
                 )
         except Exception:
-            pass
+            log_exc("visibilidad del indicador")
 
     def update_state(self, mode: str, color_hex: str, brightness: int):
         self._mode = _normalize_mode(mode)
         self._color = _normalize_hex(color_hex)
-        try:
-            self._brightness = pct_de_nivel(pct_a_nivel(brightness))
-        except Exception:
-            self._brightness = _clamp_brightness(brightness)
+        self._brightness = _clamp_brightness(brightness)
+        self._sync_menus()
         self._render_icon()
 
     def quit(self):
+        """Salida limpia: para la animación y devuelve el control a quien
+        posee el bucle GTK (callback), nunca ``os._exit``."""
         try:
             self._client.stop()
         except Exception:
-            pass
+            log_exc("parar al salir")
         try:
             self._indicator.set_status(
                 AyatanaAppIndicator3.IndicatorStatus.PASSIVE
             )
         except Exception:
-            pass
+            log_exc("ocultar indicador")
         try:
             if Gtk.main_level() > 0:
                 Gtk.main_quit()
         except Exception:
-            pass
-        os._exit(0)
+            log_exc("salir del bucle de bandeja")
+        if self._on_quit is not None:
+            try:
+                self._on_quit()
+            except Exception:
+                log_exc("callback de salida")

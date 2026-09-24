@@ -1,65 +1,65 @@
 import os
+import threading
+
+try:
+    from gui import load, log_exc, gettext_func
+except ImportError:  # ejecución directa: gui/ en sys.path
+    import importlib
+    import sys
+
+    def load(nombre):
+        return importlib.import_module(nombre)
+
+    def gettext_func():
+        mod = importlib.import_module("i18n")
+        return mod._
+
+    def log_exc(contexto):
+        tipo, exc, _tb = sys.exc_info()
+        print(f"keybackcon-gui: {contexto}: {tipo.__name__}: {exc}",
+              file=sys.stderr)
+
 try:
     import gi
+
     gi.require_version("Gtk", "4.0")
     gi.require_version("Adw", "1")
-    from gi.repository import Adw, Gio, Gtk
+    from gi.repository import Adw, Gio, Gtk, GLib
 except Exception:
+    log_exc("Gtk/Adw")
     Adw = None
     Gio = None
     Gtk = None
-try:
-    from gui.i18n import _
-except ImportError:
-    try:
-        from .i18n import _
-    except ImportError:
-        try:
-            from i18n import _
-        except ImportError:
-            def _(s):
-                return s
-try:
-    from gui.theme import get_theme, set_theme
-except ImportError:
-    try:
-        from .theme import get_theme, set_theme
-    except ImportError:
-        from theme import get_theme, set_theme
+    GLib = None
+
+_theme = load("theme")
+get_theme = _theme.get_theme
+set_theme = _theme.set_theme
+lookup_settings = _theme.lookup_settings
+
 try:
     from gui import __version__ as APP_VERSION
 except ImportError:
     try:
         from . import __version__ as APP_VERSION
     except ImportError:
-        APP_VERSION = "2.2.0"
+        APP_VERSION = "2.2.1"
+
+_ = gettext_func()
 
 
 SCHEMA_ID = "org.iniciativas.keybackcon"
 EFFECTS_KEY = "effects"
 RESTORE_KEY = "restore-on-login"
-REPO_URL = "https://github.com/Iniciativas-Alexendros/keybackcon"
+REPO_URL = "https://github.com/Soluciones-Alexendros/keybackcon"
 AUTOSTART_NAME = "keybackcon-tray.desktop"
 AUTOSTART_EXEC = "keybackcon-gui --tray"
-_cached_settings = None
 
 
 def get_settings():
-    global _cached_settings
     if Gio is None:
         return None
-    if _cached_settings is not None:
-        return _cached_settings
-    try:
-        source = Gio.SettingsSchemaSource.get_default()
-        if source is None:
-            return None
-        if source.lookup(SCHEMA_ID, True) is None:
-            return None
-        _cached_settings = Gio.Settings.new(SCHEMA_ID)
-        return _cached_settings
-    except Exception:
-        return None
+    return lookup_settings(SCHEMA_ID)
 
 
 def _pref_file(name):
@@ -75,8 +75,8 @@ def _read_bool_file(name, default):
             return True
         if text in ("0", "false", "no", "off"):
             return False
-    except Exception:
-        pass
+    except OSError:
+        pass  # ausente o ilegible: valor por defecto
     return default
 
 
@@ -87,7 +87,7 @@ def _write_bool_file(name, value):
         with open(path, "w") as f:
             f.write("true\n" if value else "false\n")
     except Exception:
-        pass
+        log_exc(f"guardar {name}")
     return bool(value)
 
 
@@ -97,7 +97,7 @@ def is_effects_enabled():
         try:
             return bool(settings.get_boolean(EFFECTS_KEY))
         except Exception:
-            pass
+            log_exc("leer effects")
     return _read_bool_file("effects", True)
 
 
@@ -109,7 +109,7 @@ def set_effects_enabled(enabled):
             settings.set_boolean(EFFECTS_KEY, value)
             settings.sync()
         except Exception:
-            pass
+            log_exc("guardar effects")
     return _write_bool_file("effects", value)
 
 
@@ -119,7 +119,7 @@ def is_restore_enabled():
         try:
             return bool(settings.get_boolean(RESTORE_KEY))
         except Exception:
-            pass
+            log_exc("leer restore-on-login")
     return _read_bool_file("restore-on-login", True)
 
 
@@ -131,7 +131,7 @@ def set_restore_enabled(enabled):
             settings.set_boolean(RESTORE_KEY, value)
             settings.sync()
         except Exception:
-            pass
+            log_exc("guardar restore-on-login")
     return _write_bool_file("restore-on-login", value)
 
 
@@ -168,13 +168,14 @@ def set_autostart_enabled(enabled):
         try:
             os.unlink(path)
         except Exception:
-            pass
+            pass  # no existía: ya estaba desactivado
         return False
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             f.write(_autostart_content())
     except Exception:
+        log_exc("autostart")
         return False
     return True
 
@@ -203,6 +204,7 @@ if Adw is not None:
             try:
                 current = get_theme()
             except Exception:
+                log_exc("tema actual")
                 current = "system"
             if current not in modes:
                 current = "system"
@@ -215,6 +217,7 @@ if Adw is not None:
             try:
                 effects_row.set_active(is_effects_enabled())
             except Exception:
+                log_exc("leer efectos")
                 effects_row.set_active(True)
             effects_row.connect("notify::active", self._on_effects_toggled)
             group.add(effects_row)
@@ -232,6 +235,7 @@ if Adw is not None:
             try:
                 autostart_row.set_active(is_autostart_enabled())
             except Exception:
+                log_exc("leer autostart")
                 autostart_row.set_active(False)
             autostart_row.connect("notify::active", self._on_autostart_toggled)
             group.add(autostart_row)
@@ -241,6 +245,7 @@ if Adw is not None:
             try:
                 restore_row.set_active(is_restore_enabled())
             except Exception:
+                log_exc("leer restore")
                 restore_row.set_active(True)
             restore_row.connect("notify::active", self._on_restore_toggled)
             group.add(restore_row)
@@ -277,6 +282,11 @@ if Adw is not None:
             device_row.set_title(_("Dispositivo"))
             device_row.set_subtitle(self._device_line())
             group.add(device_row)
+            if self._client is not None:
+                threading.Thread(
+                    target=self._fetch_device_line, args=(device_row,),
+                    daemon=True,
+                ).start()
             return page
 
         def _on_theme_changed(self, row, _pspec):
@@ -284,68 +294,85 @@ if Adw is not None:
             try:
                 mode = modes[row.get_selected()]
             except Exception:
+                log_exc("tema elegido")
                 return
             try:
                 set_theme(mode)
             except Exception:
-                pass
+                log_exc("aplicar tema")
 
         def _on_effects_toggled(self, row, _pspec):
             try:
                 enabled = bool(row.get_active())
             except Exception:
+                log_exc("efectos")
                 return
             try:
                 set_effects_enabled(enabled)
             except Exception:
-                pass
+                log_exc("guardar efectos")
             if self._on_effects_changed is not None:
                 try:
                     self._on_effects_changed(enabled)
                 except Exception:
-                    pass
+                    log_exc("avisar efectos")
 
         def _on_autostart_toggled(self, row, _pspec):
             try:
                 enabled = bool(row.get_active())
             except Exception:
+                log_exc("autostart")
                 return
             try:
                 set_autostart_enabled(enabled)
             except Exception:
-                pass
+                log_exc("guardar autostart")
 
         def _on_restore_toggled(self, row, _pspec):
             try:
                 enabled = bool(row.get_active())
             except Exception:
+                log_exc("restore-on-login")
                 return
             try:
                 set_restore_enabled(enabled)
             except Exception:
-                pass
+                log_exc("guardar restore-on-login")
 
         def _on_repo_activated(self, _row):
             try:
                 Gtk.show_uri(None, REPO_URL, 0)
             except Exception:
-                pass
+                log_exc("abrir repositorio")
 
         def _device_line(self):
+            if self._client is None:
+                return _("sin teclado a la vista")
+            return _("mirando el teclado…")
+
+        def _fetch_device_line(self, row):
+            texto = _("sin teclado a la vista")
             try:
-                if self._client is None:
-                    return _("sin teclado a la vista")
                 info = self._client.info()
             except Exception:
-                return _("sin teclado a la vista")
+                log_exc("info del dispositivo")
+                info = None
+            if info:
+                hid = str(info.get("device") or "?")
+                lamps = info.get("lamps", "?")
+                try:
+                    texto = f"{hid} · {lamps} {_('zona(s)')}"
+                except Exception:
+                    log_exc("ficha de dispositivo")
+            if GLib is not None:
+                GLib.idle_add(self._set_device_line, row, texto)
+
+        def _set_device_line(self, row, texto):
             try:
-                if not info:
-                    return _("sin teclado a la vista")
-                hid = str(info.get("dispositivo", "?"))
-                lamps = str(info.get("nº lámparas", info.get("n lámparas", "?")))
-                return "%s · %s %s" % (hid, lamps, _("zona(s)"))
+                row.set_subtitle(texto)
             except Exception:
-                return _("sin teclado a la vista")
+                log_exc("ficha de dispositivo")
+            return False
 
         def _on_restore_now(self, _row):
             try:
@@ -353,4 +380,4 @@ if Adw is not None:
                     return
                 self._client.restore()
             except Exception:
-                pass
+                log_exc("restaurar ahora")
