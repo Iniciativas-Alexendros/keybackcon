@@ -17,12 +17,12 @@ except ImportError:
             def _(s):
                 return s
 try:
-    from gui.client import KeybackconClient, KeybackconError
+    from gui.client import KeybackconClient, KeybackconError, udev_install_argv
 except ImportError:
     try:
-        from .client import KeybackconClient, KeybackconError
+        from .client import KeybackconClient, KeybackconError, udev_install_argv
     except ImportError:
-        from client import KeybackconClient, KeybackconError
+        from client import KeybackconClient, KeybackconError, udev_install_argv
 try:
     from gui.colors import COLORES
 except ImportError:
@@ -819,7 +819,7 @@ class MesaWindow(Adw.ApplicationWindow):
         if response == "install":
             src = self._udev_source()
             dst = "/etc/udev/rules.d/70-keybackcon.rules"
-            cmd = ["pkexec", "sh", "-c", "install -m644 " + src + " " + dst + " && udevadm control --reload && udevadm trigger --subsystem-match=hidraw"]
+            cmd = udev_install_argv(src, dst)
             try:
                 subprocess.run(cmd, check=False)
             except Exception as e:

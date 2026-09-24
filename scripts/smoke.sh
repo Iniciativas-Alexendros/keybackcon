@@ -44,16 +44,54 @@ else
   bad "udev"
 fi
 
-if grep -q "ExecStart=%h/.local/bin/keybackcon" "${REPO_DIR}/packaging/systemd/keybackcon.service"; then
-  ok "systemd service"
+if grep -q "ExecStart=/usr/bin/keybackcon restore" "${REPO_DIR}/packaging/systemd/keybackcon.service"; then
+  ok "systemd service (/usr/bin)"
 else
   bad "systemd"
 fi
 
-if grep -q "keybackcon animation" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service"; then
-  ok "systemd anim"
+if grep -q "ExecStart=/usr/bin/keybackcon animation" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service" \
+  && grep -q "ExecStopPost=/usr/bin/keybackcon firmware-effects" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service"; then
+  ok "systemd anim (/usr/bin)"
 else
   bad "systemd anim"
+fi
+
+if grep -q 's|/usr/bin/keybackcon|%h/.local/bin/keybackcon|g' "${REPO_DIR}/scripts/install.sh"; then
+  ok "install.sh reescribe unidades a ~/.local/bin"
+else
+  bad "install.sh reescritura de unidades"
+fi
+
+# Buscamos el literal $1/$2 en el fuente Python (no expansión de shell).
+# shellcheck disable=SC2016
+if grep -qF 'install -m644 "$1" "$2"' "${REPO_DIR}/gui/client.py" \
+  && grep -q 'def udev_install_argv' "${REPO_DIR}/gui/client.py" \
+  && grep -q 'udev_install_argv(src, dst)' "${REPO_DIR}/gui/window.py" \
+  && ! grep -qE 'install -m644 " \+ src|" \+ src \+ "' "${REPO_DIR}/gui/window.py"; then
+  ok "udev pkexec pasa rutas por \$1/\$2"
+else
+  bad "udev pkexec argv"
+fi
+
+# Comprobación dinámica: la ruta no se interpola en el script de sh -c.
+# El fragmento Python contiene "$1"/"$2" literales a propósito.
+# shellcheck disable=SC2016
+if (
+  cd "${REPO_DIR}" && python3 -c '
+from gui.client import udev_install_argv
+src = "/tmp/home with spaces/70-keybackcon.rules; rm -rf /"
+dst = "/etc/udev/rules.d/70-keybackcon.rules"
+argv = udev_install_argv(src, dst)
+assert argv[:3] == ["pkexec", "sh", "-c"]
+assert "$1" in argv[3] and "$2" in argv[3]
+assert src not in argv[3] and dst not in argv[3]
+assert argv[4:] == ["sh", src, dst]
+'
+); then
+  ok "udev_install_argv no interpola rutas"
+else
+  bad "udev_install_argv"
 fi
 
 if [ -f "${REPO_DIR}/assets/icons/keybackcon.svg" ]; then
