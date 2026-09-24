@@ -3,8 +3,8 @@ Description=Keyboard Backlight Controls animation (%i)
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/keybackcon animation %i
-ExecStopPost=%h/.local/bin/keybackcon firmware-effects on
+ExecStart=/usr/bin/keybackcon animation %i
+ExecStopPost=/usr/bin/keybackcon firmware-effects on
 Restart=no
 Nice=10
 

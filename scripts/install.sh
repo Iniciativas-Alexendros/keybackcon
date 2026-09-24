@@ -65,8 +65,15 @@ fi
 
 echo "==> keybackcon: instalar unidades de usuario"
 mkdir -p "${UNIT_DST}"
-install -m644 "${REPO_DIR}/packaging/systemd/keybackcon.service" "${UNIT_DST}/keybackcon.service"
-install -m644 "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service" "${UNIT_DST}/keybackcon-animation@.service"
+# Las unidades del paquete apuntan a /usr/bin; la instalación local las
+# reescribe a ~/.local/bin (mismo binario que acaba de instalarse arriba).
+sed 's|/usr/bin/keybackcon|%h/.local/bin/keybackcon|g' \
+  "${REPO_DIR}/packaging/systemd/keybackcon.service" \
+  > "${UNIT_DST}/keybackcon.service"
+sed 's|/usr/bin/keybackcon|%h/.local/bin/keybackcon|g' \
+  "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service" \
+  > "${UNIT_DST}/keybackcon-animation@.service"
+chmod 644 "${UNIT_DST}/keybackcon.service" "${UNIT_DST}/keybackcon-animation@.service"
 if command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload || true
   systemctl --user enable keybackcon.service || true

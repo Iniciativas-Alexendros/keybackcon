@@ -17,6 +17,16 @@ def find_binary():
     return "keybackcon"
 
 
+def udev_install_argv(src: str, dst: str) -> list[str]:
+    """Construye el argv de pkexec sin interpolar rutas en el script."""
+    script = (
+        'install -m644 "$1" "$2" && '
+        "udevadm control --reload && "
+        "udevadm trigger --subsystem-match=hidraw"
+    )
+    return ["pkexec", "sh", "-c", script, "sh", src, dst]
+
+
 def state_paths():
     base = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
     return (
