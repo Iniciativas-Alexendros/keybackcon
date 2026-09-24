@@ -2,7 +2,7 @@
 
 Checklist ejecutable (en orden):
 
-- [ ] `cargo test -- --test-threads=1` — 25 tests (los de pid usan XDG_RUNTIME_DIR temporal)
+- [ ] `cargo test -- --test-threads=1` — 27 tests (los de pid usan XDG_RUNTIME_DIR temporal)
 - [ ] `cargo clippy --all-targets -- -D warnings`
 - [ ] `cargo fmt --check`
 - [ ] `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`

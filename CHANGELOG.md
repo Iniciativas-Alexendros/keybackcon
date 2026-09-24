@@ -2,6 +2,15 @@
 
 La fuente de verdad son los tags y `git-cliff`. Resumen:
 
+## [2.2.1] — 2026-09-24
+- Unidades systemd del paquete apuntan a `/usr/bin/keybackcon` (restore al
+  iniciar sesión en `.deb`/AUR); `install.sh` las reescribe a `~/.local/bin`.
+- Instalación udev vía `pkexec` pasa rutas por `$1`/`$2` (sin interpolar en
+  `sh -c`).
+- CLI: `firmware-effects` solo acepta `on`/`off`; brillo relativo `+N`/`-N`
+  rechaza sufijos no numéricos (`+`/`-` solos siguen siendo ±10).
+- CI: job MSRV con toolchain 1.87 además de stable.
+
 ## [2.2.0] — 2026-09-14
 - Comando `restore`: detiene animación y reaplica color+brillo guardados;
   el servicio de usuario lo ejecuta al iniciar sesión para restaurar el color.
