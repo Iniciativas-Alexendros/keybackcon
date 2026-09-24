@@ -51,8 +51,8 @@ else
 fi
 
 if grep -q "ExecStart=/usr/bin/keybackcon animation" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service" \
-  && grep -q "ExecStopPost=/usr/bin/keybackcon firmware-effects" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service"; then
-  ok "systemd anim (/usr/bin)"
+  && grep -q "ExecStopPost=/usr/bin/keybackcon stop" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service"; then
+  ok "systemd anim (/usr/bin, stop restaura color)"
 else
   bad "systemd anim"
 fi

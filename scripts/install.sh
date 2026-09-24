@@ -76,7 +76,11 @@ sed 's|/usr/bin/keybackcon|%h/.local/bin/keybackcon|g' \
 chmod 644 "${UNIT_DST}/keybackcon.service" "${UNIT_DST}/keybackcon-animation@.service"
 if command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload || true
-  systemctl --user enable keybackcon.service || true
+  # No reactivar una unidad que el usuario desactivó a propósito: solo se
+  # activa si no existe estado previo (o si ya estaba activada).
+  if ! systemctl --user is-enabled keybackcon.service >/dev/null 2>&1; then
+    systemctl --user enable keybackcon.service || true
+  fi
 fi
 
 if [ "${KEYBACKCON_SKIP_UDEV:-0}" = "1" ]; then
