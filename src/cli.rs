@@ -105,10 +105,24 @@ pub fn parse(args: &[String]) -> Result<Command, Error> {
             let a = args.get(1).map_or("", String::as_str);
             Ok(Command::Brightness(parse_brightness(a)?))
         }
-        Some("firmware-effects" | "auto") => Ok(Command::FirmwareEffects(matches!(
-            args.get(1).map(String::as_str),
-            Some("on")
-        ))),
+        Some("firmware-effects" | "auto") => {
+            let a = args.get(1).map_or("", String::as_str);
+            let on = match a {
+                "on" => true,
+                "off" => false,
+                "" => {
+                    return Err(Error::Invalid(
+                        "firmware-effects requiere 'on' u 'off'".into(),
+                    ));
+                }
+                other => {
+                    return Err(Error::Invalid(format!(
+                        "firmware-effects: '{other}' no válido (válidos: on, off)"
+                    )));
+                }
+            };
+            Ok(Command::FirmwareEffects(on))
+        }
         Some("animation" | "anim") => parse_animation(args),
         Some("stop") => Ok(Command::Stop),
         Some("restore") => Ok(Command::Restore),
@@ -118,10 +132,22 @@ pub fn parse(args: &[String]) -> Result<Command, Error> {
 
 fn parse_brightness(a: &str) -> Result<BrightnessChange, Error> {
     if let Some(d) = a.strip_prefix('+') {
-        return Ok(BrightnessChange::Up(d.parse().unwrap_or(10)));
+        let n = if d.is_empty() {
+            10
+        } else {
+            d.parse()
+                .map_err(|_| Error::Invalid("el brillo relativo debe ser un número (+N)".into()))?
+        };
+        return Ok(BrightnessChange::Up(n));
     }
     if let Some(d) = a.strip_prefix('-') {
-        return Ok(BrightnessChange::Down(d.parse().unwrap_or(10)));
+        let n = if d.is_empty() {
+            10
+        } else {
+            d.parse()
+                .map_err(|_| Error::Invalid("el brillo relativo debe ser un número (-N)".into()))?
+        };
+        return Ok(BrightnessChange::Down(n));
     }
     a.parse()
         .map(BrightnessChange::Set)
@@ -272,5 +298,45 @@ mod tests {
     #[test]
     fn parse_restore_devuelve_restore() {
         assert!(matches!(parse(&args(&["restore"])), Ok(Command::Restore)));
+    }
+
+    #[test]
+    fn firmware_effects_solo_on_u_off() {
+        assert!(matches!(
+            parse(&args(&["firmware-effects", "on"])),
+            Ok(Command::FirmwareEffects(true))
+        ));
+        assert!(matches!(
+            parse(&args(&["auto", "off"])),
+            Ok(Command::FirmwareEffects(false))
+        ));
+        assert!(matches!(
+            parse(&args(&["firmware-effects"])),
+            Err(Error::Invalid(_))
+        ));
+        assert!(matches!(
+            parse(&args(&["firmware-effects", "maybe"])),
+            Err(Error::Invalid(_))
+        ));
+    }
+
+    #[test]
+    fn brightness_relativo_exige_número_o_vacío() {
+        assert!(matches!(
+            parse(&args(&["brightness", "+"])),
+            Ok(Command::Brightness(BrightnessChange::Up(10)))
+        ));
+        assert!(matches!(
+            parse(&args(&["bright", "-5"])),
+            Ok(Command::Brightness(BrightnessChange::Down(5)))
+        ));
+        assert!(matches!(
+            parse(&args(&["brightness", "+abc"])),
+            Err(Error::Invalid(_))
+        ));
+        assert!(matches!(
+            parse(&args(&["brightness", "-x"])),
+            Err(Error::Invalid(_))
+        ));
     }
 }

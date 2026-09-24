@@ -16,6 +16,13 @@ jobs:
       - run: cargo test -- --test-threads=1
       - run: cargo build --release
 
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.87
+      - run: cargo test -- --test-threads=1
+
   gui-packaging:
     runs-on: ubuntu-latest
     steps:
