@@ -63,7 +63,9 @@ else
   bad "install.sh reescritura de unidades"
 fi
 
-if grep -q 'install -m644 "$1" "$2"' "${REPO_DIR}/gui/client.py" \
+# Buscamos el literal $1/$2 en el fuente Python (no expansión de shell).
+# shellcheck disable=SC2016
+if grep -qF 'install -m644 "$1" "$2"' "${REPO_DIR}/gui/client.py" \
   && grep -q 'def udev_install_argv' "${REPO_DIR}/gui/client.py" \
   && grep -q 'udev_install_argv(src, dst)' "${REPO_DIR}/gui/window.py" \
   && ! grep -qE 'install -m644 " \+ src|" \+ src \+ "' "${REPO_DIR}/gui/window.py"; then
@@ -73,6 +75,8 @@ else
 fi
 
 # Comprobación dinámica: la ruta no se interpola en el script de sh -c.
+# El fragmento Python contiene "$1"/"$2" literales a propósito.
+# shellcheck disable=SC2016
 if (
   cd "${REPO_DIR}" && python3 -c '
 from gui.client import udev_install_argv
