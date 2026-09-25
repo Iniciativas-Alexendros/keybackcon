@@ -1,5 +1,11 @@
 # Keyboard Backlight Controls (`keybackcon`)
 
+### Propósito de este documento
+
+- **Objetivos:** Explicar qué es keybackcon, cómo instalarlo y los comandos de la CLI/GUI sin sustituir la spec HID ni los ADR.
+- **Estructura:** Instalación → uso → cómo funciona → problemas típicos → desarrollo y contratos.
+- **Contenido a integrar según contexto:** Adapta comandos y empaquetado de este repo. No copies un README de SaaS. El detalle HID está en [`docs/architecture/protocol.md`](docs/architecture/protocol.md); no lo dupliques aquí.
+
 [![CI](https://github.com/Soluciones-Alexendros/keybackcon/actions/workflows/ci.yml/badge.svg)](https://github.com/Soluciones-Alexendros/keybackcon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Soluciones-Alexendros/keybackcon)](https://github.com/Soluciones-Alexendros/keybackcon/releases)
 ![Rust](https://img.shields.io/badge/rust-sin%20dependencias-orange)
@@ -81,8 +87,8 @@ Atajos de la GUI: `Ctrl+1…9` cambia de filtro, `+`/`−` ajusta intensidad.
 - Tu color y brillo se guardan y sobreviven a reinicios y animaciones.
 - Solo hay una animación a la vez: cambiar el color la detiene antes.
 
-Detalle técnico (HID LampArray, informes, estado): [`docs/PROTOCOL.md`](docs/PROTOCOL.md),
-diseño en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y decisiones en [`docs/DECISIONS.md`](docs/DECISIONS.md).
+Detalle técnico (HID LampArray, informes, estado): [`docs/architecture/protocol.md`](docs/architecture/protocol.md),
+diseño en [`ARCHITECTURE.md`](ARCHITECTURE.md) y decisiones en [`docs/architecture/decisions/DECISIONS.md`](docs/architecture/decisions/DECISIONS.md).
 
 ## Problemas típicos
 
@@ -92,9 +98,23 @@ diseño en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y decisiones en [`docs
 | Permiso denegado en `/dev/hidraw*` | `sudo udevadm trigger` y **vuelve a iniciar sesión** |
 | La animación no para | `keybackcon stop` |
 
+Runbook: [`docs/runbooks/dispositivo.md`](docs/runbooks/dispositivo.md).
+
 ## Desarrollo
 
-¿Quieres compilar o contribuir? Todo está en [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
-Índice de documentos: [`docs/INDEX.md`](docs/INDEX.md).
+¿Quieres compilar o contribuir? [`docs/guides/desarrollo.md`](docs/guides/desarrollo.md) y [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Índice de documentos: [`docs/README.md`](docs/README.md).
+
+```bash
+make validate   # lint + test + smoke
+```
+
+## Contratos
+
+- [SECURITY.md](SECURITY.md) — avisos privados
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — conducta
+- [SUPPORT.md](SUPPORT.md) — cómo pedir ayuda
+- [AGENTS.md](AGENTS.md) — contrato para agentes
+- [CHANGELOG.md](CHANGELOG.md) — historial (`git-cliff`)
 
 Licencia MIT — ver [`LICENSE`](LICENSE).

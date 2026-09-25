@@ -1,5 +1,11 @@
 # Hoja de ruta
 
+### Propósito de este documento
+
+- **Objetivos:** Dejar visible qué está hecho y qué queda, ordenado por horizonte (en curso → corto → medio → largo → histórico).
+- **Estructura:** Horizontes con objetivos marcables y lista de hitos logrados al final.
+- **Contenido a integrar según contexto:** No copies un roadmap de otro producto. Los ADR y el protocolo no se mueven a este archivo.
+
 Próximos objetivos, ordenados por horizonte. Un objetivo solo entra aquí
 cuando está listo para trabajar (criterio claro) o bloqueado (se indica por
 qué). Los hitos ya logrados van al final como histórico.
@@ -47,6 +53,10 @@ paquete npm (requiere el secret `NPM_TOKEN` configurado en el repo).
 
 ## Histórico
 
+- [x] Probar en hardware AERO X16 cada comando + animaciones a 60 fps
+- [x] Empaquetado en repo: metadata `cargo-deb`, `PKGBUILD` de AUR y release con `.deb` + SBOM + attestation
+- [x] Publicar `.deb` en GitHub Releases (el workflow ya lo construye al empujar el tag)
+- [x] Icono en la barra superior de GNOME (indicador Ayatana): verificado visible junto al resto de iconos con la extensión AppIndicator
 - [x] v2.0.0 — Cargo por módulos, GUI mesa de luz, packaging, CI/release
 - [x] v2.1.0 — auditoría integral: robustez HID, CLI estructurada sin dependencias, protocolo centralizado, calidad y empaquetado .deb/AUR preparado
 - [x] v2.2.0 — comando restore, lanzador GUI por paquete, GUI acabada y empaquetado al día
