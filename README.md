@@ -6,8 +6,8 @@
 - **Estructura:** Instalación → uso → cómo funciona → problemas típicos → desarrollo y contratos.
 - **Contenido a integrar según contexto:** Adapta comandos y empaquetado de este repo. No copies un README de SaaS. El detalle HID está en [`docs/architecture/protocol.md`](docs/architecture/protocol.md); no lo dupliques aquí.
 
-[![CI](https://github.com/Iniciativas-Alexendros/keybackcon/actions/workflows/ci.yml/badge.svg)](https://github.com/Iniciativas-Alexendros/keybackcon/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Iniciativas-Alexendros/keybackcon)](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
+[![CI](https://github.com/Soluciones-Alexendros/keybackcon/actions/workflows/ci.yml/badge.svg)](https://github.com/Soluciones-Alexendros/keybackcon/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Soluciones-Alexendros/keybackcon)](https://github.com/Soluciones-Alexendros/keybackcon/releases)
 ![Rust](https://img.shields.io/badge/rust-sin%20dependencias-orange)
 ![GTK4](https://img.shields.io/badge/GUI-GTK4%20%2B%20Adwaita-blue)
 ![License](https://img.shields.io/badge/licencia-MIT-green)
@@ -31,16 +31,41 @@ La mesa de luz vive también en la **bandeja del sistema**
 
 ## Instalación
 
-1. **Ubuntu/Debian (recomendado, `.deb`):** descarga el `.deb` de cada
-   [release](https://github.com/Iniciativas-Alexendros/keybackcon/releases)
+1. **npm (un comando, cualquier distro):** `npm install -g keybackcon`
+   instala el binario precompilado (Linux x86_64/arm64) y configura
+   automáticamente la regla udev y las unidades systemd de usuario
+   (restauración al login incluida). Omite la regla udev con
+   `KEYBACKCON_SKIP_UDEV=1 npm install -g keybackcon`.
+2. **Ubuntu/Debian (`.deb`):** descarga el `.deb` de cada
+   [release](https://github.com/Soluciones-Alexendros/keybackcon/releases)
    e instala con `sudo apt install ./keybackcon_X.Y.Z-1_amd64.deb`
    (binario, GUI, icono, regla udev y unidades de usuario).
-2. **Arch Linux (AUR):** `yay -S keybackcon` (o `paru -S keybackcon`).
-3. **Script local (`~/.local`):** `./scripts/install.sh`
+3. **Arch Linux (AUR):** `yay -S keybackcon` (o `paru -S keybackcon`).
+4. **Script local (`~/.local`):** `./scripts/install.sh`
    (pide sudo una vez para la regla udev).
 
 Cada release trae además el tarball `keybackcon-vX.Y.Z-linux-x86_64.tar.gz`,
 `SHA256SUMS` y SBOM CycloneDX.
+
+## Compatibilidad
+
+El CLI `keybackcon` es un binario sin dependencias (solo libc): funciona en
+cualquier Linux con systemd o sin él. La GUI (GTK4/Adwaita) y la bandeja
+(Ayatana) necesitan los paquetes de tu distro:
+
+| Distro | Instalación | Paquetes de la GUI/bandeja |
+|---|---|---|
+| Cualquiera (con Node) | `npm install -g keybackcon` | el postinstalador lo configura todo |
+| Debian/Ubuntu | `.deb` o `./scripts/install.sh` | `python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-ayatanaappindicator3-0.1 python3-cairo` |
+| Arch/Manjaro | AUR (`keybackcon`) | `python-gobject gtk4 libadwaita libayatana-appindicator python-cairo` |
+| Fedora | `./scripts/install.sh` o npm | `python3-gobject gtk4 libadwaita libayatana-appindicator-gtk3 python3-cairo` |
+| openSUSE | `./scripts/install.sh` o npm | `python3-gobject gtk4 libadwaita libayatana-appindicator3-1 python3-cairo` |
+
+`install.sh` y la propia GUI detectan la distro (vía `/etc/os-release`) y
+dicen el comando exacto cuando falta algo. En distros sin systemd la regla
+udev y el binario siguen funcionando; las unidades de usuario se omiten y la
+restauración al login puede hacerse con el autostart de la bandeja
+(Preferencias → Arranque automático).
 
 ## Uso
 

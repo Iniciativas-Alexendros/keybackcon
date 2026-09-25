@@ -51,8 +51,8 @@ else
 fi
 
 if grep -q "ExecStart=/usr/bin/keybackcon animation" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service" \
-  && grep -q "ExecStopPost=/usr/bin/keybackcon firmware-effects" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service"; then
-  ok "systemd anim (/usr/bin)"
+  && grep -q "ExecStopPost=/usr/bin/keybackcon stop" "${REPO_DIR}/packaging/systemd/keybackcon-animation@.service"; then
+  ok "systemd anim (/usr/bin, stop restaura color)"
 else
   bad "systemd anim"
 fi
@@ -110,6 +110,15 @@ if [ "$gui_fail" -eq 0 ]; then
   ok "GUI completa compila (gui/*.py)"
 else
   bad "GUI completa"
+fi
+
+# Suite unitaria de la GUI: sin display ni hardware; los tests de bandeja
+# hacen skip si Gtk3/Ayatana no están (p. ej. CI) o si Gtk4 ya está cargado
+# en el proceso (incompatibilidad documentada GTK3/GTK4).
+if (cd "${REPO_DIR}" && python3 -m unittest discover -s gui/tests >/dev/null 2>&1); then
+  ok "tests unitarios GUI (unittest)"
+else
+  bad "tests unitarios GUI"
 fi
 
 if python3 -c 'import sys; from xml.dom import minidom; minidom.parse(sys.argv[1])' "${REPO_DIR}/gui/org.iniciativas.keybackcon.gschema.xml"; then

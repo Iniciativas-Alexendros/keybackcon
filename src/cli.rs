@@ -7,7 +7,7 @@
 
 use std::io::{self, Write};
 
-use crate::animation;
+use crate::animation::{self, MAX_FPS};
 use crate::color::{self, Rgb};
 use crate::error::Error;
 use crate::lamp::Lamp;
@@ -23,7 +23,10 @@ pub enum Command {
     /// Imprime nombre y versión.
     Version,
     /// Muestra dispositivo, lámparas, tipo y estado.
-    Info,
+    Info {
+        /// Salida JSON estable (para la GUI) en vez del formato humano.
+        json: bool,
+    },
     /// Fija el color base y lo persiste con el brillo actual.
     Set(Rgb),
     /// Apaga la zona sin perder el estado.
@@ -36,7 +39,7 @@ pub enum Command {
     Animation {
         /// Modo de animación.
         mode: Mode,
-        /// Fotogramas por segundo, ya acotados a 1–240.
+        /// Fotogramas por segundo, ya acotados a 1–`MAX_FPS`.
         fps: u64,
     },
     /// Detiene la animación y restaura el color base.
@@ -94,18 +97,31 @@ pub fn parse(args: &[String]) -> Result<Command, Error> {
     match args.first().map(String::as_str) {
         Some("--help" | "-h" | "help") => Ok(Command::Help),
         Some("--version" | "-V") => Ok(Command::Version),
-        Some("info") => Ok(Command::Info),
+        Some("info") => match args.get(1).map(String::as_str) {
+            None => Ok(Command::Info { json: false }),
+            Some("--json") if args.len() == 2 => Ok(Command::Info { json: true }),
+            _ => Err(Error::Usage),
+        },
         Some("set") => {
+            if args.len() > 2 {
+                return Err(Error::Usage);
+            }
             let s = args.get(1).map_or("", String::as_str);
             let c = color::parse_color(s).map_err(|e| Error::Invalid(e.to_string()))?;
             Ok(Command::Set(c))
         }
-        Some("off") => Ok(Command::Off),
+        Some("off") if args.len() == 1 => Ok(Command::Off),
         Some("brightness" | "bright") => {
+            if args.len() > 2 {
+                return Err(Error::Usage);
+            }
             let a = args.get(1).map_or("", String::as_str);
             Ok(Command::Brightness(parse_brightness(a)?))
         }
         Some("firmware-effects" | "auto") => {
+            if args.len() > 2 {
+                return Err(Error::Usage);
+            }
             let a = args.get(1).map_or("", String::as_str);
             let on = match a {
                 "on" => true,
@@ -124,8 +140,8 @@ pub fn parse(args: &[String]) -> Result<Command, Error> {
             Ok(Command::FirmwareEffects(on))
         }
         Some("animation" | "anim") => parse_animation(args),
-        Some("stop") => Ok(Command::Stop),
-        Some("restore") => Ok(Command::Restore),
+        Some("stop") if args.len() == 1 => Ok(Command::Stop),
+        Some("restore") if args.len() == 1 => Ok(Command::Restore),
         _ => Err(Error::Usage),
     }
 }
@@ -165,14 +181,32 @@ fn parse_animation(args: &[String]) -> Result<Command, Error> {
             )))
         }
     };
-    let fps: u64 = args
-        .iter()
-        .position(|a| a == "--fps")
-        .and_then(|i| args.get(i + 1))
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(60)
-        .clamp(1, 240);
-    Ok(Command::Animation { mode, fps })
+    let mut fps: u64 = 60;
+    let mut i = 2;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--fps" => {
+                let v = args
+                    .get(i + 1)
+                    .ok_or_else(|| Error::Invalid("animation: --fps requiere un valor".into()))?;
+                fps = v.parse().map_err(|_| {
+                    Error::Invalid(format!(
+                        "animation: --fps '{v}' no es un número (válidos: 1–{MAX_FPS})"
+                    ))
+                })?;
+                i += 2;
+            }
+            other => {
+                return Err(Error::Invalid(format!(
+                    "animation: argumento inesperado '{other}'"
+                )));
+            }
+        }
+    }
+    Ok(Command::Animation {
+        mode,
+        fps: fps.clamp(1, MAX_FPS),
+    })
 }
 
 /// Lee los argumentos reales y ejecuta el comando resultante.
@@ -184,7 +218,7 @@ pub fn run() -> Result<(), Error> {
             println!("{} {}", BIN, env!("CARGO_PKG_VERSION"));
             Ok(())
         }
-        Command::Info => cmd_info(),
+        Command::Info { json } => cmd_info(json),
         Command::Set(c) => cmd_set(c),
         Command::Off => cmd_off(),
         Command::Brightness(change) => cmd_brightness(change),
@@ -195,11 +229,20 @@ pub fn run() -> Result<(), Error> {
     }
 }
 
-fn cmd_info() -> Result<(), Error> {
+fn cmd_info(json: bool) -> Result<(), Error> {
     let (base, pct) = state::load_state();
     let path = Lamp::find()?;
     let mut l = Lamp::open()?;
     let (count, kind) = l.attrs()?;
+    if json {
+        println!(
+            "{{\"version\":\"{}\",\"device\":\"{}\",\"lamps\":{count},\"kind\":{kind},\"state\":\"{}\",\"brightness\":{pct}}}",
+            env!("CARGO_PKG_VERSION"),
+            json_escape(&path.to_string_lossy()),
+            color::to_hex(base),
+        );
+        return Ok(());
+    }
     println!("dispositivo : {}", path.display());
     println!("nº lámparas : {count}");
     println!("tipo        : {kind} (lo que declara el firmware; en este modelo es engañoso)");
@@ -208,6 +251,25 @@ fn cmd_info() -> Result<(), Error> {
         base.0, base.1, base.2
     );
     Ok(())
+}
+
+/// Escapa un texto para incrustarlo entre comillas en JSON (sin dependencias).
+fn json_escape(s: &str) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if c < '\u{20}' => {
+                #[allow(clippy::cast_possible_truncation)]
+                let code = c as u32;
+                let _ = write!(out, "\\u{code:04x}");
+            }
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 fn cmd_set(c: Rgb) -> Result<(), Error> {
@@ -338,5 +400,79 @@ mod tests {
             parse(&args(&["brightness", "-x"])),
             Err(Error::Invalid(_))
         ));
+    }
+
+    #[test]
+    fn animation_fps_exige_número_y_rechaza_extras() {
+        assert!(matches!(
+            parse(&args(&["animation"])),
+            Ok(Command::Animation { fps: 60, .. })
+        ));
+        assert!(matches!(
+            parse(&args(&["animation", "rainbow"])),
+            Ok(Command::Animation {
+                mode: Mode::Rainbow,
+                ..
+            })
+        ));
+        assert!(matches!(
+            parse(&args(&["animation", "breathe", "--fps", "30"])),
+            Ok(Command::Animation { fps: 30, .. })
+        ));
+        // Fuera de rango se acota al máximo (documentado), no da error.
+        assert!(matches!(
+            parse(&args(&["animation", "breathe", "--fps", "500"])),
+            Ok(Command::Animation { fps: 60, .. })
+        ));
+        assert!(matches!(
+            parse(&args(&["animation", "breathe", "--fps"])),
+            Err(Error::Invalid(_))
+        ));
+        assert!(matches!(
+            parse(&args(&["animation", "breathe", "--fps", "abc"])),
+            Err(Error::Invalid(_))
+        ));
+        assert!(matches!(
+            parse(&args(&["animation", "breathe", "30"])),
+            Err(Error::Invalid(_))
+        ));
+        assert!(matches!(
+            parse(&args(&["animation", "breathe", "--fps", "30", "extra"])),
+            Err(Error::Invalid(_))
+        ));
+    }
+
+    #[test]
+    fn info_json_y_aridad_estricta() {
+        assert!(matches!(
+            parse(&args(&["info"])),
+            Ok(Command::Info { json: false })
+        ));
+        assert!(matches!(
+            parse(&args(&["info", "--json"])),
+            Ok(Command::Info { json: true })
+        ));
+        assert!(matches!(
+            parse(&args(&["info", "extra"])),
+            Err(Error::Usage)
+        ));
+        assert!(matches!(
+            parse(&args(&["set", "red", "extra"])),
+            Err(Error::Usage)
+        ));
+        assert!(matches!(parse(&args(&["off", "x"])), Err(Error::Usage)));
+        assert!(matches!(parse(&args(&["stop", "x"])), Err(Error::Usage)));
+        assert!(matches!(parse(&args(&["restore", "x"])), Err(Error::Usage)));
+        assert!(matches!(
+            parse(&args(&["brightness", "50", "x"])),
+            Err(Error::Usage)
+        ));
+    }
+
+    #[test]
+    fn json_escape_escapa_lo_escapable() {
+        assert_eq!(json_escape("/dev/hidraw0"), "/dev/hidraw0");
+        assert_eq!(json_escape("a\"b\\c"), "a\\\"b\\\\c");
+        assert_eq!(json_escape("a\u{1}b"), "a\\u0001b");
     }
 }

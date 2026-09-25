@@ -4,7 +4,7 @@ After=default.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/keybackcon restore
+ExecStart=__KEYBACKCON_BIN__ restore
 RemainAfterExit=yes
 # Al iniciar sesión las ACL uaccess pueden no estar aplicadas todavía:
 # reintenta en vez de quedarse sin restaurar el color.

@@ -17,14 +17,6 @@ msgstr ""
 msgid "Keyboard Backlight Controls"
 msgstr ""
 
-#: gui/control_panel.py:282
-msgid "Fija tu luz en dos toques"
-msgstr ""
-
-#: gui/control_panel.py:289
-msgid "Lo que ves arriba es lo que brilla abajo: elige color, ajusta intensidad y listo."
-msgstr ""
-
 #: gui/control_panel.py:310
 msgid "Elige tu luz"
 msgstr ""
@@ -77,10 +69,6 @@ msgstr ""
 msgid "Apagado"
 msgstr ""
 
-#: gui/control_panel.py:340
-msgid "Tu tono:"
-msgstr ""
-
 #: gui/control_panel.py:469
 msgid "Tu tono"
 msgstr ""
@@ -115,14 +103,6 @@ msgstr ""
 
 #: gui/control_panel.py:395
 msgid "Parar movimiento"
-msgstr ""
-
-#: gui/control_panel.py:400
-msgid "Qué está pasando"
-msgstr ""
-
-#: gui/control_panel.py:400
-msgid "Estado vivo del teclado."
 msgstr ""
 
 #: gui/control_panel.py:402
@@ -192,26 +172,6 @@ msgstr ""
 msgid "Luz fijada de nuevo"
 msgstr ""
 
-#: gui/brightness.py:1
-msgid "Mínimo"
-msgstr ""
-
-#: gui/brightness.py:1
-msgid "Bajo"
-msgstr ""
-
-#: gui/brightness.py:1
-msgid "Medio"
-msgstr ""
-
-#: gui/brightness.py:1
-msgid "Alto"
-msgstr ""
-
-#: gui/brightness.py:1
-msgid "Máximo"
-msgstr ""
-
 #: gui/window.py:700
 msgid "Sin acceso al teclado"
 msgstr ""
@@ -243,3 +203,48 @@ msgstr ""
 #: gui/settings.py:262
 msgid "Dispositivo"
 msgstr ""
+
+#: gui/tray.py:211
+msgid "Abrir ventana"
+msgstr ""
+
+#: gui/tray.py:221
+msgid "Brillo"
+msgstr ""
+
+#: gui/tray.py:223
+msgid "Colores"
+msgstr ""
+
+#: gui/tray.py:264
+msgid "Tu tono…"
+msgstr ""
+
+#: gui/tray.py:226
+msgid "Animaciones"
+msgstr ""
+
+#: gui/tray.py:231
+msgid "Apagar"
+msgstr ""
+
+#: gui/tray.py:236
+msgid "Restaurar"
+msgstr ""
+
+#: gui/tray.py:243
+msgid "Preferencias"
+msgstr ""
+
+#: gui/tray.py:254
+msgid "Salir"
+msgstr ""
+
+#: gui/window.py:819
+msgid "Permiso no instalado (pkexec cancelado o sin autorización)."
+msgstr ""
+
+#: gui/window.py
+msgid "Tono personalizado"
+msgstr ""
+

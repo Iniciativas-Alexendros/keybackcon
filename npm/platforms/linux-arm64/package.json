@@ -1,0 +1,12 @@
+{
+  "name": "@keybackcon/linux-arm64",
+  "version": "2.2.1",
+  "description": "Binario precompilado de keybackcon para Linux arm64",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": "Soluciones-Alexendros/keybackcon",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "main": "index.js",
+  "files": ["index.js", "bin/keybackcon"]
+}

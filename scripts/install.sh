@@ -6,6 +6,47 @@ UNIT_DST="${HOME}/.config/systemd/user"
 DESK_DST="${HOME}/.local/share/applications"
 ICON_DST="${HOME}/.local/share/icons/hicolor/scalable/apps"
 
+# Gestor de paquetes de la distro (para pistas de instalación concretas).
+pkg_manager() {
+  local id=""
+  if [ -r /etc/os-release ]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    id=" ${ID:-} ${ID_LIKE:-} "
+  fi
+  case "$id" in
+    *arch*|*manjaro*|*endeavouros*) echo pacman ;;
+    *fedora*|*rhel*|*centos*|*nobara*) echo dnf ;;
+    *opensuse*|*suse*) echo zypper ;;
+    *debian*|*ubuntu*|*mint*|*pop*) echo apt ;;
+    *) echo "" ;;
+  esac
+}
+
+# pkg_hint <gettext|glib|tray>: comando concreto para instalar el rol.
+pkg_hint() {
+  local mgr
+  mgr="$(pkg_manager)"
+  case "${mgr}:$1" in
+    apt:gettext)    echo "sudo apt install gettext" ;;
+    apt:glib)       echo "sudo apt install libglib2.0-bin" ;;
+    apt:tray)       echo "sudo apt install gir1.2-ayatanaappindicator3-0.1 python3-cairo" ;;
+    pacman:gettext) echo "sudo pacman -S gettext" ;;
+    pacman:glib)    echo "sudo pacman -S glib2" ;;
+    pacman:tray)    echo "sudo pacman -S libayatana-appindicator python-cairo" ;;
+    dnf:gettext)    echo "sudo dnf install gettext" ;;
+    dnf:glib)       echo "sudo dnf install glib2" ;;
+    dnf:tray)       echo "sudo dnf install libayatana-appindicator-gtk3 python3-cairo" ;;
+    zypper:gettext) echo "sudo zypper install gettext" ;;
+    zypper:glib)    echo "sudo zypper install glib2" ;;
+    zypper:tray)    echo "sudo zypper install libayatana-appindicator3-1 python3-cairo" ;;
+    *:gettext)      echo "instala gettext con tu gestor de paquetes" ;;
+    *:glib)         echo "instala glib2 (glib-compile-schemas) con tu gestor de paquetes" ;;
+    *:tray)         echo "instala AyatanaAppIndicator3 y pycairo con tu gestor de paquetes" ;;
+    *)              echo "instala '$1' con tu gestor de paquetes" ;;
+  esac
+}
+
 echo "==> keybackcon: compilar (release)"
 cargo build --release --manifest-path "${REPO_DIR}/Cargo.toml"
 
@@ -30,6 +71,7 @@ if command -v msgfmt >/dev/null 2>&1; then
   echo "    .mo generado en ${MO_BUILD}"
 else
   echo "    aviso: msgfmt no disponible, se omite la compilación del .mo (la GUI usará el idioma por defecto)" >&2
+  echo "    pista: $(pkg_hint gettext)" >&2
 fi
 if [ -f "${MO_BUILD}" ]; then
   mkdir -p "$(dirname "${MO_DST}")"
@@ -48,6 +90,7 @@ if command -v glib-compile-schemas >/dev/null 2>&1; then
   glib-compile-schemas "${SCHEMA_DST_DIR}" || true
 else
   echo "    aviso: glib-compile-schemas no disponible, se omite la compilación de schemas" >&2
+  echo "    pista: $(pkg_hint glib)" >&2
 fi
 # Nota: sin autostart global. El autostart es opt-in desde el diálogo de
 # preferencias (gui/settings.py), que crea ~/.config/autostart/keybackcon-tray.desktop bajo demanda.
@@ -76,7 +119,11 @@ sed 's|/usr/bin/keybackcon|%h/.local/bin/keybackcon|g' \
 chmod 644 "${UNIT_DST}/keybackcon.service" "${UNIT_DST}/keybackcon-animation@.service"
 if command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload || true
-  systemctl --user enable keybackcon.service || true
+  # No reactivar una unidad que el usuario desactivó a propósito: solo se
+  # activa si no existe estado previo (o si ya estaba activada).
+  if ! systemctl --user is-enabled keybackcon.service >/dev/null 2>&1; then
+    systemctl --user enable keybackcon.service || true
+  fi
 fi
 
 if [ "${KEYBACKCON_SKIP_UDEV:-0}" = "1" ]; then
@@ -99,5 +146,24 @@ for d in "${XDG_STATE_HOME:-${HOME}/.local/state}" "${HOME}/.local/state"; do
     break
   fi
 done
+
+echo "==> keybackcon: comprobar dependencias de la GUI y la bandeja"
+tray_ok=1
+python3 -c 'import gi; gi.require_version("Gtk", "3.0"); gi.require_version("AyatanaAppIndicator3", "0.1"); from gi.repository import AyatanaAppIndicator3; import cairo' >/dev/null 2>&1 || tray_ok=0
+gui_ok=1
+python3 -c 'import gi; gi.require_version("Gtk", "4.0"); gi.require_version("Adw", "1"); from gi.repository import Gtk, Adw' >/dev/null 2>&1 || gui_ok=0
+if [ "$gui_ok" = 0 ]; then
+  echo "    aviso: la ventana no arrancará hasta instalar sus dependencias" >&2
+  case "$(pkg_manager)" in
+    pacman) echo "    pista: sudo pacman -S python-gobject gtk4 libadwaita" >&2 ;;
+    dnf)    echo "    pista: sudo dnf install python3-gobject gtk4 libadwaita" >&2 ;;
+    zypper) echo "    pista: sudo zypper install python3-gobject gtk4 libadwaita" >&2 ;;
+    *)      echo "    pista: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1" >&2 ;;
+  esac
+fi
+if [ "$tray_ok" = 0 ]; then
+  echo "    aviso: la bandeja (--tray) no estará disponible hasta instalar sus dependencias" >&2
+  echo "    pista: $(pkg_hint tray)" >&2
+fi
 
 echo "OK: keybackcon instalado. Prueba con: keybackcon info"

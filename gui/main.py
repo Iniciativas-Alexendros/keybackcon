@@ -4,13 +4,29 @@ import sys
 
 APP_ID = "org.iniciativas.keybackcon"
 
-USAGE = """Uso: main.py [--tray] [-h | --help]
+DBUS_NAME = "org.iniciativas.keybackcon"
+DBUS_PATH = "/org/iniciativas/keybackcon"
+DBUS_CONTROL_IFACE = "org.iniciativas.keybackcon.Control"
+CONTROL_XML = """
+<node>
+  <interface name="org.iniciativas.keybackcon.Control">
+    <method name="Toggle"/>
+    <method name="Present"/>
+    <method name="Quit"/>
+  </interface>
+</node>
+"""
+
+USAGE = """Uso: main.py [--tray] [--tray-child] [--preferences] [-h | --help]
 
 Keyboard Backlight Controls — ventana y bandeja del sistema.
 
 Opciones:
-  --tray      Arranca en la bandeja del sistema, sin ventana visible.
-  -h, --help  Muestra esta ayuda y sale con código 0."""
+  --tray          Arranca en la bandeja del sistema, sin ventana visible.
+  --tray-child    Ventana hija de la bandeja: el botón X la oculta en vez
+                  de cerrarla y expone el control D-Bus de la ventana.
+  --preferences   Abre la ventana mostrando Preferencias (sin --tray).
+  -h, --help      Muestra esta ayuda y sale con código 0."""
 
 
 def _fix_path():
@@ -21,7 +37,53 @@ def _fix_path():
             sys.path.insert(0, path)
 
 
+def _ensure_gui_package():
+    """Garantiza que `import gui` funcione aunque main.py corra suelto.
+
+    El lanzador instalado ejecuta `python3 <dir>/main.py`, sin paquete
+    `gui/` alrededor; en ese caso cargamos __init__.py como módulo `gui`.
+    """
+    try:
+        import gui  # noqa: F401
+
+        return
+    except ImportError:
+        pass
+    here = os.path.dirname(os.path.abspath(__file__))
+    init = os.path.join(here, "__init__.py")
+    if not os.path.isfile(init):
+        return
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "gui", init, submodule_search_locations=[here]
+        )
+        if spec is None or spec.loader is None:
+            return
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["gui"] = module
+        spec.loader.exec_module(module)
+    except Exception:
+        print("keybackcon-gui: no se pudo cargar el paquete gui", file=sys.stderr)
+
+
 _fix_path()
+_ensure_gui_package()
+
+try:
+    from gui import load, log_exc, gettext_func
+except ImportError:  # último recurso: ejecutar gui/ como directorio suelto
+    def load(nombre):
+        import importlib
+
+        return importlib.import_module(nombre)
+
+    def gettext_func():
+        return load("i18n")._
+
+    def log_exc(contexto):
+        print(f"keybackcon-gui: {contexto}: error de importación", file=sys.stderr)
 
 
 def print_usage(out=None):
@@ -29,63 +91,44 @@ def print_usage(out=None):
     stream.write(USAGE + "\n")
 
 
-def _setup_i18n():
-    try:
-        from gui.i18n import setup_i18n
-    except ImportError:
-        from i18n import setup_i18n
-    return setup_i18n()
-
-
 def _app_version():
     try:
         from gui import __version__ as version
+
         return version
-    except ImportError:
-        return "2.2.0"
+    except Exception:
+        return "2.2.1"
+
+
+def _setup_i18n():
+    return load("i18n").setup_i18n()
 
 
 def _load_client():
-    try:
-        from gui.client import KeybackconClient
-    except ImportError:
-        from client import KeybackconClient
-    return KeybackconClient()
+    return load("client").KeybackconClient()
 
 
 def _load_tray():
-    try:
-        from gui.tray import TrayIndicator, TrayUnavailable
-    except ImportError:
-        from tray import TrayIndicator, TrayUnavailable
-    return TrayIndicator, TrayUnavailable
+    tray = load("tray")
+    return tray.TrayIndicator, tray.TrayUnavailable
 
 
 def _load_window():
-    try:
-        from gui.control_panel import MesaWindow
-    except ImportError:
-        from control_panel import MesaWindow
-    return MesaWindow
+    return load("control_panel").MesaWindow
 
 
 def _open_preferences(parent=None, on_effects_changed=None):
     try:
-        try:
-            from gui.settings import SettingsDialog
-        except ImportError:
-            from settings import SettingsDialog
-    except Exception as exc:
-        print("keybackcon: preferencias no disponibles (%s)" % exc,
-              file=sys.stderr)
+        SettingsDialog = load("settings").SettingsDialog
+    except Exception:
+        log_exc("cargar preferencias")
         return False
     try:
         dialog = SettingsDialog(on_effects_changed=on_effects_changed)
         dialog.present(parent)
         return True
-    except Exception as exc:
-        print("keybackcon: no se pudieron abrir las preferencias (%s)" % exc,
-              file=sys.stderr)
+    except Exception:
+        log_exc("abrir preferencias")
         return False
 
 
@@ -93,22 +136,113 @@ def _stop_client(client):
     try:
         client.stop()
     except Exception:
-        pass
+        log_exc("parar cliente")
 
 
-def _run_window():
-    import gi
+def _aviso_falta(que, exc, rol):
+    """Mensaje claro (sin traceback) con el comando de instalación de la distro."""
+    print(f"keybackcon-gui: hace falta {que}.", file=sys.stderr)
+    try:
+        sugerencia = load("compat").sugerencia_instalacion(rol)
+        print(f"  instala: {sugerencia}", file=sys.stderr)
+    except Exception:
+        log_exc("sugerencia de paquetes")
+    print(f"  ({exc})", file=sys.stderr)
 
-    gi.require_version("Gtk", "4.0")
-    gi.require_version("Adw", "1")
-    from gi.repository import Adw
+
+def _llamar_control(metodo):
+    """Llama a la ventana viva por D-Bus. Devuelve True si respondió;
+    False si no hay ventana (o no respondió), en cuyo caso toca lanzarla."""
+    try:
+        from gi.repository import Gio
+
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.call_sync(
+            DBUS_NAME,
+            DBUS_PATH,
+            DBUS_CONTROL_IFACE,
+            metodo,
+            None,
+            None,
+            Gio.DBusCallFlags.NONE,
+            1500,
+            None,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _run_window(open_preferences=False, hide_on_close=False):
+    try:
+        import gi
+
+        gi.require_version("Gtk", "4.0")
+        gi.require_version("Adw", "1")
+        from gi.repository import Adw, GLib, Gio
+    except Exception as exc:
+        _aviso_falta("GTK4/libadwaita (python3-gi)", exc, "gui")
+        return 1
 
     MesaWindow = _load_window()
     app = Adw.Application(application_id=APP_ID)
+    holder = {}
+
+    def _toggle_window():
+        win = holder.get("win")
+        if win is None:
+            return False
+        try:
+            if win.is_visible():
+                win.set_visible(False)
+            else:
+                win.present()
+        except Exception:
+            log_exc("alternar ventana")
+        return False
+
+    def _present_window():
+        win = holder.get("win")
+        if win is not None:
+            try:
+                win.present()
+            except Exception:
+                log_exc("presentar ventana")
+        return False
+
+    def _register_control():
+        if not hide_on_close:
+            # Solo la ventana hija de la bandeja acepta control remoto; la
+            # instancia del menú de apps es autónoma.
+            return
+        try:
+            conn = app.get_dbus_connection()
+            if conn is None:
+                return
+            info = Gio.DBusNodeInfo.new_for_xml(CONTROL_XML)
+            iface = info.interfaces[0]
+
+            def method_call(conn, _sender, _path, _iface, method, _params,
+                            invocation):
+                if method == "Toggle":
+                    GLib.idle_add(_toggle_window)
+                elif method == "Present":
+                    GLib.idle_add(_present_window)
+                elif method == "Quit":
+                    GLib.idle_add(lambda: (app.quit(), False)[1])
+                invocation.return_value(None)
+
+            import warnings
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", message=".*register_object is deprecated.*"
+                )
+                conn.register_object(DBUS_PATH, iface, method_call)
+        except Exception:
+            log_exc("registrar control D-Bus")
 
     def on_activate(app):
-        holder = {}
-
         def on_preferences():
             win = holder.get("win")
             if win is None:
@@ -116,9 +250,13 @@ def _run_window():
             else:
                 win.open_preferences()
 
-        win = MesaWindow(app, on_preferences=on_preferences)
+        win = MesaWindow(app, on_preferences=on_preferences,
+                         hide_on_close=hide_on_close)
         holder["win"] = win
+        _register_control()
         win.present()
+        if open_preferences:
+            GLib.idle_add(win.open_preferences)
 
     app.connect("activate", on_activate)
     return app.run(None)
@@ -130,53 +268,78 @@ def _run_tray():
     except Exception as exc:
         print("Aviso: bandeja no disponible (%s); abriendo ventana." % exc,
               file=sys.stderr)
+        try:
+            print("  instala: %s" % load("compat").sugerencia_instalacion("bandeja"),
+                  file=sys.stderr)
+        except Exception:
+            log_exc("sugerencia de bandeja")
         return _run_window()
     client = _load_client()
-    try:
-        MesaWindow = _load_window()
-    except Exception as exc:
-        print("Aviso: ventana GTK4 no disponible junto a la bandeja "
-              "(%s); solo bandeja." % exc, file=sys.stderr)
-        MesaWindow = None
-    if MesaWindow is None:
-        return _run_tray_only(client, TrayIndicator)
-    return _run_tray_with_window(client, TrayIndicator, MesaWindow)
-
-
-def _initial_tray_state(client):
-    color, pct = "ffffff", 100
-    try:
-        color, pct = client.get_state_file()
-    except Exception:
-        pass
-    mode = "fijar"
-    try:
-        if client.animation_running():
-            mode = "breathe"
-    except Exception:
-        pass
-    return mode, color, pct
+    return _run_tray_only(client, TrayIndicator)
 
 
 def _run_tray_only(client, TrayIndicator):
-    from gi.repository import Gtk, GLib
+    import atexit
+    import subprocess
 
-    window_proc = []
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk, GLib
+    except Exception as exc:
+        _aviso_falta("GTK3 para la bandeja", exc, "bandeja")
+        print("keybackcon-gui: abriendo la ventana en su lugar.",
+              file=sys.stderr)
+        return _run_window()
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    ventanas = []
+
+    def reap_ventanas():
+        ventanas[:] = [p for p in ventanas if p.poll() is None]
+
+    def abrir_ventana(*args, preferencias=False):
+        # 1) ¿Ya hay una ventana viva? Se la pide por D-Bus: instantáneo y
+        #    sin procesos fantasma (instancia única de Gtk.Application).
+        if _llamar_control("Present" if preferencias else "Toggle"):
+            return
+        # 2) No hay ventana: lanzamos la hija persistente (--tray-child), que
+        #    se oculta en vez de cerrarse y atiende Toggle/Present/Quit.
+        reap_ventanas()
+        if ventanas:
+            return
+        argv = [sys.executable, os.path.join(here, "main.py"), "--tray-child"]
+        if preferencias:
+            argv.append("--preferences")
+        try:
+            ventanas.append(subprocess.Popen(argv))
+        except Exception:
+            log_exc("lanzar ventana")
 
     def on_toggle_window(*args):
-        window_proc[:] = [p for p in window_proc if p.poll() is None]
-        if window_proc:
-            return
-        try:
-            import subprocess
+        abrir_ventana()
 
-            here = os.path.dirname(os.path.abspath(__file__))
-            window_proc.append(
-                subprocess.Popen([sys.executable, os.path.join(here, "main.py")])
-            )
-        except Exception as exc:
-            print("keybackcon: no se pudo abrir la ventana (%s)" % exc,
-                  file=sys.stderr)
+    def on_preferences(*args):
+        abrir_ventana(preferencias=True)
+
+    def matar_ventanas():
+        for p in list(ventanas):
+            if p.poll() is None:
+                try:
+                    p.terminate()
+                except Exception:
+                    log_exc("terminar ventana hija")
+        for p in list(ventanas):
+            try:
+                p.wait(timeout=2)
+            except Exception:
+                try:
+                    p.kill()
+                except Exception:
+                    log_exc("matar ventana hija")
+
+    atexit.register(matar_ventanas)
 
     def on_about(*args):
         try:
@@ -189,17 +352,17 @@ def _run_tray_only(client, TrayIndicator):
             dialog.run()
             dialog.destroy()
         except Exception:
-            pass
+            log_exc("diálogo acerca de")
 
-    def on_preferences(*args):
-        _open_preferences(None, None)
+    def _gtk_main_quit():
+        try:
+            if Gtk.main_level() > 0:
+                Gtk.main_quit()
+        except Exception:
+            log_exc("salir del bucle GTK")
 
-    tray = TrayIndicator(client, on_toggle_window, on_preferences, on_about)
-    try:
-        mode, color, pct = _initial_tray_state(client)
-        tray.update_state(mode, color, pct)
-    except Exception:
-        pass
+    tray = TrayIndicator(client, on_toggle_window, on_preferences, on_about,
+                         on_quit=_gtk_main_quit)
 
     def on_signal(*args):
         _stop_client(client)
@@ -207,7 +370,7 @@ def _run_tray_only(client, TrayIndicator):
             if Gtk.main_level() > 0:
                 Gtk.main_quit()
         except Exception:
-            pass
+            log_exc("señal de salida")
         return False
 
     try:
@@ -224,94 +387,17 @@ def _run_tray_only(client, TrayIndicator):
                 else:
                     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, on_signal)
             except Exception:
-                pass
+                log_exc("señal %s" % sig)
     except Exception:
-        pass
+        log_exc("manejadores de señal")
     try:
         Gtk.main()
     except KeyboardInterrupt:
-        pass
+        pass  # Ctrl+C: la limpieza de abajo (finally) ya se ejecuta
     finally:
+        matar_ventanas()
         _stop_client(client)
     return 0
-
-
-def _run_tray_with_window(client, TrayIndicator, MesaWindow):
-    import gi
-
-    gi.require_version("Gtk", "4.0")
-    gi.require_version("Adw", "1")
-    from gi.repository import Adw
-
-    app = Adw.Application(application_id=APP_ID)
-    state = {"window": None, "tray": None}
-
-    def on_toggle_window(*args):
-        win = state.get("window")
-        if win is None:
-            return
-        try:
-            if win.is_visible():
-                win.hide()
-            else:
-                win.present()
-        except Exception:
-            pass
-
-    def on_about(*args):
-        win = state.get("window")
-        try:
-            dialog = Adw.AlertDialog.new(
-                "keybackcon %s" % _app_version(),
-                "Keyboard Backlight Controls",
-            )
-            dialog.add_response("ok", "Cerrar")
-            dialog.set_default_response("ok")
-            dialog.set_close_response("ok")
-            if win is not None:
-                dialog.present(win)
-            else:
-                dialog.present()
-        except Exception:
-            pass
-
-    def on_preferences(*args):
-        win = state.get("window")
-        if win is None:
-            _open_preferences(None, None)
-        else:
-            win.open_preferences()
-
-    def on_activate(app):
-        if state["window"] is None:
-            win = MesaWindow(app, on_preferences=on_preferences)
-            state["window"] = win
-
-            def on_close(window, *args):
-                if state.get("tray") is not None:
-                    try:
-                        window.hide()
-                    except Exception:
-                        pass
-                    return True
-                return False
-
-            win.connect("close-request", on_close)
-        if state["tray"] is None:
-            tray = TrayIndicator(client, on_toggle_window, on_preferences, on_about)
-            state["tray"] = tray
-            try:
-                mode, color, pct = _initial_tray_state(client)
-                tray.update_state(mode, color, pct)
-            except Exception:
-                pass
-
-    def on_shutdown(app, *args):
-        _stop_client(client)
-
-    app.connect("activate", on_activate)
-    app.connect("shutdown", on_shutdown)
-    return app.run(None)
 
 
 def main(argv=None):
@@ -320,10 +406,12 @@ def main(argv=None):
         print_usage()
         return 0
     _setup_i18n()
-    use_tray = "--tray" in args
-    if not use_tray:
-        return _run_window()
-    return _run_tray()
+    if "--tray" in args:
+        return _run_tray()
+    return _run_window(
+        open_preferences="--preferences" in args,
+        hide_on_close="--tray-child" in args,
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,50 @@
+name: Versionado
+# Autoversionado: en cada push a main, git-cliff calcula el bump desde los
+# commits convencionales (feat/fix/...) desde el último tag; si hay bump,
+# sincroniza las fuentes de versión (Cargo.toml, gui/__init__.py, PKGBUILD),
+# regenera el CHANGELOG, y crea commit + tag. El tag dispara release.yml.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Versión actual (Cargo.toml)
+        id: current
+        run: echo "version=$(grep -m1 '^version' Cargo.toml | sed -E 's/.*\"([^\"]+)\".*/\1/')" >> "$GITHUB_OUTPUT"
+
+      - name: Bump calculado por git-cliff
+        id: cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          args: --bumped-version
+        env:
+          OUTPUT: BUMPED_VERSION
+
+      - name: Sincronizar versiones, CHANGELOG, commit y tag
+        if: steps.cliff.outputs.version != '' && steps.cliff.outputs.version != steps.current.outputs.version
+        run: |
+          set -euo pipefail
+          NEW="${{ steps.cliff.outputs.version }}"
+          OLD="${{ steps.current.outputs.version }}"
+          echo "bump: $OLD -> $NEW"
+          sed -i "s/^version = \"$OLD\"/version = \"$NEW\"/" Cargo.toml
+          sed -i "s/^__version__ = \".*\"/__version__ = \"$NEW\"/" gui/__init__.py
+          sed -i "s/^pkgver=.*/pkgver=$NEW/" packaging/aur/PKGBUILD
+          git cliff -o CHANGELOG.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml gui/__init__.py packaging/aur/PKGBUILD CHANGELOG.md
+          git commit -m "chore(release): prepara v$NEW [skip ci]"
+          git tag "v$NEW"
+          git push origin "HEAD:main" --tags

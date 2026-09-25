@@ -29,6 +29,8 @@ jobs:
         run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
       - name: GUI py_compile
         run: python3 -m py_compile gui/*.py
+      - name: GUI tests
+        run: python3 -m unittest discover -s gui/tests
       - name: shellcheck
         run: |
           if command -v shellcheck >/dev/null; then
