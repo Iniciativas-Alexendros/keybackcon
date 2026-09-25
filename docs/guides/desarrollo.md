@@ -46,16 +46,17 @@ Checklist ejecutable (en orden; la fachada es `make validate`):
   `cargo test` más el smoke. No se añade `criterion`/`proptest`/`tarpaulin`
   para inventar un porcentaje.
 
-Commits convencionales (`feat:`, `fix:`, `docs:`…). El CHANGELOG se genera
-con `git-cliff` (ver `cliff.toml`); no lo edites a mano en releases.
+Commits convencionales (`feat:`, `fix:`, `docs:`…). El CHANGELOG.md es un
+resumen curado a mano por release; las notas del release las genera GitHub
+(`generate_release_notes` en `release.yml`).
 La versión canónica vive en `Cargo.toml` y está espejada en
 `gui/__init__.py` (`__version__`) y `packaging/aur/PKGBUILD` (`pkgver`); el
 workflow `.github/workflows/version.yml` las sincroniza automáticamente en
 cada push a `main`: calcula el bump con `git-cliff --bumped-version` desde
 los commits convencionales desde el último tag y, si hay bump, actualiza las
-tres fuentes, regenera `CHANGELOG.md` y crea el commit `chore(release)` y el
-tag `vX.Y.Z` (que dispara `release.yml`). El workflow de release verifica que
-el tag coincida con las tres fuentes.
+tres fuentes y crea el commit `chore(release)` y el tag `vX.Y.Z` (que
+dispara `release.yml`). El workflow de release verifica que el tag coincida
+con las tres fuentes.
 
 ## Empaquetado y release
 

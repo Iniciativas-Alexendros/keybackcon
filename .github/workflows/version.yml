@@ -1,8 +1,9 @@
 name: Versionado
 # Autoversionado: en cada push a main, git-cliff calcula el bump desde los
 # commits convencionales (feat/fix/...) desde el último tag; si hay bump,
-# sincroniza las fuentes de versión (Cargo.toml, gui/__init__.py, PKGBUILD),
-# regenera el CHANGELOG, y crea commit + tag. El tag dispara release.yml.
+# sincroniza las fuentes de versión (Cargo.toml, gui/__init__.py, PKGBUILD)
+# y crea commit + tag. El tag dispara release.yml. El CHANGELOG.md se
+# mantiene curado a mano por release: no lo regenera este workflow.
 on:
   push:
     branches: [main]
@@ -23,13 +24,27 @@ jobs:
         id: current
         run: echo "version=$(grep -m1 '^version' Cargo.toml | sed -E 's/.*\"([^\"]+)\".*/\1/')" >> "$GITHUB_OUTPUT"
 
+      - name: Instala git-cliff
+        run: |
+          set -euo pipefail
+          gh release download --repo orhun/git-cliff \
+            --pattern 'git-cliff-*-x86_64-unknown-linux-gnu.tar.gz' \
+            --output /tmp/git-cliff.tar.gz --clobber
+          tar -xzf /tmp/git-cliff.tar.gz -C /tmp
+          sudo install -m 0755 /tmp/git-cliff-*/git-cliff /usr/local/bin/git-cliff
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # No usamos orhun/git-cliff-action: su output interno falla al parsear
+      # el resultado (jq) y deja el bump vacío sin error visible. Aquí leemos
+      # la versión directamente de la salida del binario.
       - name: Bump calculado por git-cliff
         id: cliff
-        uses: orhun/git-cliff-action@v4
-        with:
-          args: --bumped-version
-        env:
-          OUTPUT: BUMPED_VERSION
+        run: |
+          set -uo pipefail
+          BUMPED="$(git-cliff --config cliff.toml --bumped-version 2>/dev/null | tr -d '[:space:]' || true)"
+          echo "version=${BUMPED#v}" >> "$GITHUB_OUTPUT"
+          echo "bump calculado: '${BUMPED#v}'"
 
       - name: Sincronizar versiones, CHANGELOG, commit y tag
         if: steps.cliff.outputs.version != '' && steps.cliff.outputs.version != steps.current.outputs.version
@@ -41,10 +56,9 @@ jobs:
           sed -i "s/^version = \"$OLD\"/version = \"$NEW\"/" Cargo.toml
           sed -i "s/^__version__ = \".*\"/__version__ = \"$NEW\"/" gui/__init__.py
           sed -i "s/^pkgver=.*/pkgver=$NEW/" packaging/aur/PKGBUILD
-          git cliff -o CHANGELOG.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Cargo.toml gui/__init__.py packaging/aur/PKGBUILD CHANGELOG.md
+          git add Cargo.toml gui/__init__.py packaging/aur/PKGBUILD
           git commit -m "chore(release): prepara v$NEW [skip ci]"
           git tag "v$NEW"
           git push origin "HEAD:main" --tags
