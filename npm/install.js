@@ -26,7 +26,7 @@ function warn(msg) {
 }
 
 function resolveBinary() {
-  for (const name of ['@keybackcon/linux-x64', '@keybackcon/linux-arm64']) {
+  for (const name of ['keybackcon-linux-x64', 'keybackcon-linux-arm64']) {
     try {
       const bin = require(name);
       if (typeof bin === 'string' && fs.existsSync(bin)) return bin;

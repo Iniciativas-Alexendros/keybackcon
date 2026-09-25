@@ -18,7 +18,7 @@ La fuente de verdad son los tags y `git-cliff`. Resumen:
   unidad de restauración e `install.sh` respeta la unidad desactivada.
 - CI/CD: autoversionado con git-cliff (bump desde commits convencionales,
   PR de release en auto-merge y tag), publicación npm (`keybackcon` +
-  `@keybackcon/linux-x64`/`linux-arm64`) y org migrada a
+  `keybackcon-linux-x64`/`linux-arm64`) y org migrada a
   Soluciones-Alexendros.
 
 ## [2.2.1] — 2026-09-24

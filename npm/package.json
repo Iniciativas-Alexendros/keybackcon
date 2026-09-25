@@ -27,8 +27,8 @@
     "postinstall": "node install.js"
   },
   "optionalDependencies": {
-    "@keybackcon/linux-x64": "2.3.0",
-    "@keybackcon/linux-arm64": "2.3.0"
+    "keybackcon-linux-x64": "2.3.0",
+    "keybackcon-linux-arm64": "2.3.0"
   },
   "files": [
     "bin/keybackcon.js",
