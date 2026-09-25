@@ -7,7 +7,7 @@
 const { spawn } = require('child_process');
 
 function resolveBinary() {
-  for (const name of ['@keybackcon/linux-x64', '@keybackcon/linux-arm64']) {
+  for (const name of ['keybackcon-linux-x64', 'keybackcon-linux-arm64']) {
     try {
       const bin = require(name);
       if (typeof bin === 'string') return bin;

@@ -1,5 +1,5 @@
 {
-  "name": "@keybackcon/linux-arm64",
+  "name": "keybackcon-linux-arm64",
   "version": "2.3.0",
   "description": "Binario precompilado de keybackcon para Linux arm64",
   "license": "MIT",

@@ -80,7 +80,9 @@ fuentes. Los commits `chore` no bumpan (`skip` en `cliff.toml`).
 - **npm**: `.github/workflows/npm.yml` compila x86_64 y arm64 y publica el
   meta-paquete `keybackcon` (lanzador + postinstalador de regla udev y
   unidades systemd de usuario) junto a los paquetes de binario por
-  plataforma `@keybackcon/linux-x64` y `@keybackcon/linux-arm64`. Las fuentes
+  plataforma `keybackcon-linux-x64` y `keybackcon-linux-arm64` (nombres
+  planos: la cuenta del token no tiene el scope `@keybackcon` y npm
+  devuelve E404 al publicar en un scope inexistente). Las fuentes
   viven en `npm/`; el binario se copia en `npm/platforms/*/bin/` solo en CI
   (ignorado por git). Requiere el secret `NPM_TOKEN`. Prueba local con
   `npm pack` en `npm/` y en `npm/platforms/linux-x64/`.

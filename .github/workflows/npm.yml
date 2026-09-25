@@ -1,8 +1,7 @@
 name: NPM
 # Publica en npm el meta-paquete `keybackcon` y los paquetes de binario por
-# plataforma (@keybackcon/linux-x64, @keybackcon/linux-arm64), todos con la
-# versión del tag. Requiere el secret NPM_TOKEN de una cuenta con acceso al
-# scope @keybackcon (publicar con --access public).
+# plataforma (keybackcon-linux-x64, keybackcon-linux-arm64), todos con la
+# versión del tag. Requiere el secret NPM_TOKEN de la organización.
 on:
   push:
     tags:
@@ -80,11 +79,11 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Publicar paquetes de plataforma
         run: |
-          npm publish ./npm/platforms/linux-x64 --access public
-          npm publish ./npm/platforms/linux-arm64 --access public
+          npm publish ./npm/platforms/linux-x64
+          npm publish ./npm/platforms/linux-arm64
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publicar meta-paquete
-        run: npm publish ./npm --access public
+        run: npm publish ./npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
