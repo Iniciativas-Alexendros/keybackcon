@@ -18,14 +18,6 @@ msgstr ""
 msgid "Keyboard Backlight Controls"
 msgstr "Keyboard Backlight Controls"
 
-#: gui/control_panel.py:282
-msgid "Fija tu luz en dos toques"
-msgstr "Fija tu luz en dos toques"
-
-#: gui/control_panel.py:289
-msgid "Lo que ves arriba es lo que brilla abajo: elige color, ajusta intensidad y listo."
-msgstr "Lo que ves arriba es lo que brilla abajo: elige color, ajusta intensidad y listo."
-
 #: gui/control_panel.py:310
 msgid "Elige tu luz"
 msgstr "Elige tu luz"
@@ -78,10 +70,6 @@ msgstr "Verde"
 msgid "Apagado"
 msgstr "Apagado"
 
-#: gui/control_panel.py:340
-msgid "Tu tono:"
-msgstr "Tu tono:"
-
 #: gui/control_panel.py:469
 msgid "Tu tono"
 msgstr "Tu tono"
@@ -117,14 +105,6 @@ msgstr "Arcoíris"
 #: gui/control_panel.py:395
 msgid "Parar movimiento"
 msgstr "Parar movimiento"
-
-#: gui/control_panel.py:400
-msgid "Qué está pasando"
-msgstr "Qué está pasando"
-
-#: gui/control_panel.py:400
-msgid "Estado vivo del teclado."
-msgstr "Estado vivo del teclado."
 
 #: gui/control_panel.py:402
 msgid "mirando el teclado…"
@@ -264,3 +244,8 @@ msgstr "Salir"
 #: gui/window.py:819
 msgid "Permiso no instalado (pkexec cancelado o sin autorización)."
 msgstr "Permiso no instalado (pkexec cancelado o sin autorización)."
+
+#: gui/window.py
+msgid "Tono personalizado"
+msgstr "Tono personalizado"
+

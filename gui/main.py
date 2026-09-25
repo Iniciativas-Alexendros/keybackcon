@@ -4,12 +4,27 @@ import sys
 
 APP_ID = "org.iniciativas.keybackcon"
 
-USAGE = """Uso: main.py [--tray] [--preferences] [-h | --help]
+DBUS_NAME = "org.iniciativas.keybackcon"
+DBUS_PATH = "/org/iniciativas/keybackcon"
+DBUS_CONTROL_IFACE = "org.iniciativas.keybackcon.Control"
+CONTROL_XML = """
+<node>
+  <interface name="org.iniciativas.keybackcon.Control">
+    <method name="Toggle"/>
+    <method name="Present"/>
+    <method name="Quit"/>
+  </interface>
+</node>
+"""
+
+USAGE = """Uso: main.py [--tray] [--tray-child] [--preferences] [-h | --help]
 
 Keyboard Backlight Controls — ventana y bandeja del sistema.
 
 Opciones:
   --tray          Arranca en la bandeja del sistema, sin ventana visible.
+  --tray-child    Ventana hija de la bandeja: el botón X la oculta en vez
+                  de cerrarla y expone el control D-Bus de la ventana.
   --preferences   Abre la ventana mostrando Preferencias (sin --tray).
   -h, --help      Muestra esta ayuda y sale con código 0."""
 
@@ -124,19 +139,95 @@ def _stop_client(client):
         log_exc("parar cliente")
 
 
-def _run_window(open_preferences=False):
+def _llamar_control(metodo):
+    """Llama a la ventana viva por D-Bus. Devuelve True si respondió;
+    False si no hay ventana (o no respondió), en cuyo caso toca lanzarla."""
+    try:
+        from gi.repository import Gio
+
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.call_sync(
+            DBUS_NAME,
+            DBUS_PATH,
+            DBUS_CONTROL_IFACE,
+            metodo,
+            None,
+            None,
+            Gio.DBusCallFlags.NONE,
+            1500,
+            None,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _run_window(open_preferences=False, hide_on_close=False):
     import gi
 
     gi.require_version("Gtk", "4.0")
     gi.require_version("Adw", "1")
-    from gi.repository import Adw, GLib
+    from gi.repository import Adw, GLib, Gio
 
     MesaWindow = _load_window()
     app = Adw.Application(application_id=APP_ID)
+    holder = {}
+
+    def _toggle_window():
+        win = holder.get("win")
+        if win is None:
+            return False
+        try:
+            if win.is_visible():
+                win.set_visible(False)
+            else:
+                win.present()
+        except Exception:
+            log_exc("alternar ventana")
+        return False
+
+    def _present_window():
+        win = holder.get("win")
+        if win is not None:
+            try:
+                win.present()
+            except Exception:
+                log_exc("presentar ventana")
+        return False
+
+    def _register_control():
+        if not hide_on_close:
+            # Solo la ventana hija de la bandeja acepta control remoto; la
+            # instancia del menú de apps es autónoma.
+            return
+        try:
+            conn = app.get_dbus_connection()
+            if conn is None:
+                return
+            info = Gio.DBusNodeInfo.new_for_xml(CONTROL_XML)
+            iface = info.interfaces[0]
+
+            def method_call(conn, _sender, _path, _iface, method, _params,
+                            invocation):
+                if method == "Toggle":
+                    GLib.idle_add(_toggle_window)
+                elif method == "Present":
+                    GLib.idle_add(_present_window)
+                elif method == "Quit":
+                    GLib.idle_add(lambda: (app.quit(), False)[1])
+                invocation.return_value(None)
+
+            import warnings
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", message=".*register_object is deprecated.*"
+                )
+                conn.register_object(DBUS_PATH, iface, method_call)
+        except Exception:
+            log_exc("registrar control D-Bus")
 
     def on_activate(app):
-        holder = {}
-
         def on_preferences():
             win = holder.get("win")
             if win is None:
@@ -144,8 +235,10 @@ def _run_window(open_preferences=False):
             else:
                 win.open_preferences()
 
-        win = MesaWindow(app, on_preferences=on_preferences)
+        win = MesaWindow(app, on_preferences=on_preferences,
+                         hide_on_close=hide_on_close)
         holder["win"] = win
+        _register_control()
         win.present()
         if open_preferences:
             GLib.idle_add(win.open_preferences)
@@ -181,10 +274,16 @@ def _run_tray_only(client, TrayIndicator):
         ventanas[:] = [p for p in ventanas if p.poll() is None]
 
     def abrir_ventana(*args, preferencias=False):
+        # 1) ¿Ya hay una ventana viva? Se la pide por D-Bus: instantáneo y
+        #    sin procesos fantasma (instancia única de Gtk.Application).
+        if _llamar_control("Present" if preferencias else "Toggle"):
+            return
+        # 2) No hay ventana: lanzamos la hija persistente (--tray-child), que
+        #    se oculta en vez de cerrarse y atiende Toggle/Present/Quit.
         reap_ventanas()
         if ventanas:
             return
-        argv = [sys.executable, os.path.join(here, "main.py")]
+        argv = [sys.executable, os.path.join(here, "main.py"), "--tray-child"]
         if preferencias:
             argv.append("--preferences")
         try:
@@ -283,7 +382,10 @@ def main(argv=None):
     _setup_i18n()
     if "--tray" in args:
         return _run_tray()
-    return _run_window(open_preferences="--preferences" in args)
+    return _run_window(
+        open_preferences="--preferences" in args,
+        hide_on_close="--tray-child" in args,
+    )
 
 
 if __name__ == "__main__":

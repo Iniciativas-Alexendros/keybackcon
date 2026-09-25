@@ -39,8 +39,6 @@ StagePreview = _preview_mod.StagePreview
 mode_label = _preview_mod.mode_label
 _theme = load("theme")
 apply_saved_theme = _theme.apply_saved_theme
-set_theme = _theme.set_theme
-get_theme = _theme.get_theme
 try:
     _settings = load("settings")
     SettingsDialog = _settings.SettingsDialog
@@ -62,82 +60,29 @@ ESTADO_SIN_TECLADO = {}
 
 
 BASE_CSS = """
-.display-font {
-  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: @window_fg_color;
-}
-.body-font {
-  font-family: 'IBM Plex Sans', 'Cantarell', system-ui, sans-serif;
-  color: @window_fg_color;
-}
 .mono-font {
-  font-family: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+  font-family: ui-monospace, monospace;
   font-feature-settings: 'tnum';
+  font-size: 12px;
   color: alpha(@window_fg_color, 0.75);
 }
-.section-label {
-  font-family: 'IBM Plex Sans', 'Cantarell', system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  color: @window_fg_color;
-}
-.section-hint {
-  font-size: 12px;
-  color: alpha(@window_fg_color, 0.65);
-}
-.light-stage-frame {
+.preview-card {
   background-color: @card_bg_color;
-  border-radius: 18px;
+  border-radius: 16px;
   border: 1px solid alpha(@window_fg_color, 0.08);
 }
 .swatch-btn {
   border-radius: 999px;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 40px;
+  min-height: 40px;
   padding: 0;
-  border: 2px solid alpha(@window_fg_color, 0.14);
-}
-.swatch-btn:hover {
-  border-color: #ffb86b;
 }
 .swatch-btn.selected {
-  border-color: #7c6cff;
-  box-shadow: 0 0 0 2px rgba(124, 108, 255, 0.45);
-}
-.swatch-btn:focus-visible {
-  outline: 2px solid #ffb86b;
-  outline-offset: 2px;
-}
-.bright-scale trough {
-  background-color: alpha(@window_fg_color, 0.12);
-  border-radius: 999px;
-  min-height: 8px;
-}
-.bright-scale highlight {
-  background: linear-gradient(90deg, #7c6cff, #ffb86b);
-  border-radius: 999px;
-}
-.bright-scale slider {
-  background-color: @window_fg_color;
-  border: 2px solid #ffb86b;
-  border-radius: 999px;
-  min-width: 20px;
-  min-height: 20px;
-}
-.segmented-btn {
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-weight: 600;
-}
-.segmented-btn.suggested {
-  background: linear-gradient(135deg, #7c6cff, #ffb86b);
-  color: black;
+  border-color: @accent_color;
+  box-shadow: 0 0 0 2px alpha(@accent_color, 0.45);
 }
 .status-dot-alive {
-  color: #7c6cff;
+  color: @accent_color;
 }
 .status-dot-idle {
   color: alpha(@window_fg_color, 0.5);
@@ -210,11 +155,13 @@ class MesaWindow(Adw.ApplicationWindow):
     def preview_t0(self, value):
         self._preview.t0 = value
 
-    def __init__(self, app, client=None, on_preferences=None):
+    def __init__(self, app, client=None, on_preferences=None, hide_on_close=False):
         super().__init__(application=app)
         apply_saved_theme()
-        self.set_title(_("Keyboard Backlight Controls"))
-        self.set_default_size(420, 640)
+        self.set_title("keybackcon")
+        self.set_default_size(460, 840)
+        self.set_size_request(420, 620)
+        self._hide_on_close = hide_on_close
         self._on_preferences = on_preferences
         if client is None:
             self._client = KeybackconClient()
@@ -243,32 +190,28 @@ class MesaWindow(Adw.ApplicationWindow):
         toolbar = Adw.ToolbarView()
         self.toast_overlay.set_child(toolbar)
         header = Adw.HeaderBar()
+        # Píldora de estado compacta en la barra (sustituye a la sección de pie).
+        self.status_dot = Gtk.Label(label="●")
+        self.status_text = Gtk.Label(label=_("mirando el teclado…"))
+        self.status_text.add_css_class("mono-font")
+        pill = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        pill.append(self.status_dot)
+        pill.append(self.status_text)
+        header.pack_start(pill)
         prefs_button = Gtk.Button.new_from_icon_name("preferences-system-symbolic")
         prefs_button.set_tooltip_text(_("Preferencias"))
         prefs_button.connect("clicked", self._on_preferences_clicked)
         header.pack_end(prefs_button)
         toolbar.add_top_bar(header)
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_vexpand(True)
-        toolbar.set_content(scroll)
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
-        content.set_margin_top(20)
-        content.set_margin_bottom(20)
-        content.set_margin_start(20)
-        content.set_margin_end(20)
-        scroll.set_child(content)
-        hero_title = Gtk.Label(label=_("Fija tu luz en dos toques"))
-        hero_title.add_css_class("display-font")
-        hero_title.add_css_class("title-1")
-        hero_title.set_wrap(True)
-        content.append(hero_title)
-        hero_sub = Gtk.Label(label=_("Lo que ves arriba es lo que brilla abajo: elige color, ajusta intensidad y listo."))
-        hero_sub.add_css_class("body-font")
-        hero_sub.set_wrap(True)
-        content.append(hero_sub)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        content.set_margin_top(16)
+        content.set_margin_bottom(16)
+        content.set_margin_start(16)
+        content.set_margin_end(16)
+        toolbar.set_content(content)
         stage_frame = Gtk.Frame()
-        stage_frame.add_css_class("light-stage-frame")
-        stage_frame.set_size_request(-1, 190)
+        stage_frame.add_css_class("preview-card")
+        stage_frame.set_size_request(-1, 150)
         content.append(stage_frame)
         self.stage = Gtk.DrawingArea()
         self.stage.set_hexpand(True)
@@ -295,53 +238,35 @@ class MesaWindow(Adw.ApplicationWindow):
         self.stage_caption = Gtk.Label(label="")
         self.stage_caption.add_css_class("mono-font")
         content.append(self.stage_caption)
-        theme_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        theme_row.set_homogeneous(True)
-        self.theme_buttons = {}
-        try:
-            current_theme = get_theme()
-        except Exception:
-            log_exc("tema actual")
-            current_theme = "system"
-        for tmode, tlabel in (("system", _("Sistema")), ("light", _("Claro")), ("dark", _("Oscuro"))):
-            tb = Gtk.ToggleButton(label=tlabel)
-            tb.add_css_class("segmented-btn")
-            if tmode == current_theme:
-                tb.set_active(True)
-            tb.connect("toggled", self._on_theme, tmode)
-            theme_row.append(tb)
-            self.theme_buttons[tmode] = tb
-        content.append(theme_row)
-        content.append(self._section(_("Elige tu luz"), _("Toca un filtro o crea tu propio tono.")))
-        flow = Gtk.FlowBox()
-        flow.set_selection_mode(Gtk.SelectionMode.NONE)
-        flow.set_homogeneous(True)
-        flow.set_max_children_per_line(6)
-        flow.set_row_spacing(10)
-        flow.set_column_spacing(10)
-        content.append(flow)
-        for nombre, hexv in COLORES:
-            btn = Gtk.Button()
-            btn.set_tooltip_text(f"{_(nombre)} · #{hexv}")
-            btn.add_css_class("swatch-btn")
-            btn.set_size_request(44, 44)
-            btn.add_css_class(f"sw-{hexv}")
-            btn.connect("clicked", self._on_color, hexv, nombre)
-            flow.append(btn)
-            self.swatch_buttons[hexv] = btn
-        custom_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        custom_row.append(Gtk.Label(label=_("Tu tono:")))
-        try:
-            dlg = Gtk.ColorDialog()
-            self.custom_btn = Gtk.ColorDialogButton(dialog=dlg)
-            self.custom_btn.connect("notify::rgba", self._on_custom)
-        except Exception:
-            log_exc("ColorDialog")
-            self.custom_btn = Gtk.ColorButton()
-            self.custom_btn.connect("color-set", lambda b: self._on_custom(b, None))
-        custom_row.append(self.custom_btn)
-        content.append(custom_row)
-        content.append(self._section(_("Cuánta luz quieres"), _("Desliza o usa − / + . Se guarda solo.")))
+        page = Adw.PreferencesPage()
+        content.append(page)
+
+        g_mov = Adw.PreferencesGroup(
+            title=_("Cómo se mueve"),
+            description=_("Fija la luz o déjala respirar."),
+        )
+        seg = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        seg.add_css_class("linked")
+        seg.set_homogeneous(True)
+        self.seg_buttons = {}
+        for key, label in (("fijar", _("Fijar")), ("breathe", _("Respirar")), ("rainbow", _("Arcoíris"))):
+            b = Gtk.ToggleButton(label=label)
+            b.set_hexpand(True)
+            b.connect("toggled", self._on_mode, key)
+            seg.append(b)
+            self.seg_buttons[key] = b
+        g_mov.add(seg)
+        stop_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.stop_btn = Gtk.Button(label=_("Parar movimiento"))
+        self.stop_btn.connect("clicked", self._on_stop)
+        stop_box.append(self.stop_btn)
+        g_mov.add(stop_box)
+        page.add(g_mov)
+
+        g_bright = Adw.PreferencesGroup(
+            title=_("Cuánta luz quieres"),
+            description=_("Desliza o usa − / + . Se guarda solo."),
+        )
         brow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         minus = Gtk.Button(label="−")
         minus.connect("clicked", self._on_bright_step, -1)
@@ -352,7 +277,6 @@ class MesaWindow(Adw.ApplicationWindow):
         )
         self.bright_scale.set_draw_value(False)
         self.bright_scale.set_hexpand(True)
-        self.bright_scale.add_css_class("bright-scale")
         self.bright_scale.set_value(self.cur_pct)
         self.bright_scale.connect("value-changed", self._on_bright_scale)
         brow.append(self.bright_scale)
@@ -363,37 +287,62 @@ class MesaWindow(Adw.ApplicationWindow):
         self.bright_value.add_css_class("mono-font")
         self.bright_value.set_width_chars(5)
         brow.append(self.bright_value)
-        content.append(brow)
-        content.append(self._section(_("Cómo se mueve"), _("Fija la luz o déjala respirar.")))
-        seg = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        seg.set_homogeneous(True)
-        self.seg_buttons = {}
-        for key, label in (("fijar", _("Fijar")), ("breathe", _("Respirar")), ("rainbow", _("Arcoíris"))):
-            b = Gtk.ToggleButton(label=label)
-            b.add_css_class("segmented-btn")
-            b.connect("toggled", self._on_mode, key)
-            seg.append(b)
-            self.seg_buttons[key] = b
-        content.append(seg)
-        stop_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.stop_btn = Gtk.Button(label=_("Parar movimiento"))
-        self.stop_btn.connect("clicked", self._on_stop)
-        stop_row.append(self.stop_btn)
-        content.append(stop_row)
-        content.append(self._section(_("Qué está pasando"), _("Estado vivo del teclado.")))
-        self.status_dot = Gtk.Label(label="●")
-        self.status_text = Gtk.Label(label=_("mirando el teclado…"))
-        self.status_text.add_css_class("mono-font")
-        self.status_text.set_xalign(0)
-        self.status_text.set_hexpand(True)
-        srow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        srow.append(self.status_dot)
-        srow.append(self.status_text)
-        content.append(srow)
+        g_bright.add(brow)
+        page.add(g_bright)
+
+        g_color = Adw.PreferencesGroup(
+            title=_("Elige tu luz"),
+            description=_("Toca un filtro o crea tu propio tono."),
+        )
+        flow = Gtk.FlowBox()
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_homogeneous(True)
+        flow.set_max_children_per_line(6)
+        flow.set_row_spacing(10)
+        flow.set_column_spacing(10)
+        for nombre, hexv in COLORES:
+            btn = Gtk.Button()
+            btn.set_tooltip_text(f"{_(nombre)} · #{hexv}")
+            btn.set_accessible_role(Gtk.AccessibleRole.BUTTON)
+            try:
+                btn.update_property((Gtk.AccessibleProperty.LABEL,), (f"{_(nombre)} · #{hexv}",))
+            except Exception:
+                log_exc("accesible del filtro")
+            btn.add_css_class("swatch-btn")
+            btn.set_size_request(40, 40)
+            btn.add_css_class(f"sw-{hexv}")
+            btn.connect("clicked", self._on_color, hexv, nombre)
+            flow.append(btn)
+            self.swatch_buttons[hexv] = btn
+        # Los widgets que no son filas se añaden en PreferencesGroup *tras*
+        # la ListBox de filas: envolvemos el FlowBox en una PreferencesRow
+        # para que los filtros queden por encima de "Tono personalizado".
+        flow_row = Adw.PreferencesRow()
+        flow.set_margin_top(10)
+        flow.set_margin_bottom(10)
+        flow.set_margin_start(12)
+        flow.set_margin_end(12)
+        flow.set_min_children_per_line(6)
+        flow_row.set_child(flow)
+        g_color.add(flow_row)
+        custom_row = Adw.ActionRow(title=_("Tono personalizado"))
+        try:
+            dlg = Gtk.ColorDialog()
+            self.custom_btn = Gtk.ColorDialogButton(dialog=dlg)
+            self.custom_btn.set_valign(Gtk.Align.CENTER)
+            self.custom_btn.connect("notify::rgba", self._on_custom)
+        except Exception:
+            log_exc("ColorDialog")
+            self.custom_btn = Gtk.ColorButton()
+            self.custom_btn.connect("color-set", lambda b: self._on_custom(b, None))
+        custom_row.add_suffix(self.custom_btn)
+        g_color.add(custom_row)
+        page.add(g_color)
         self.connect("close-request", self._on_close)
         key_ctl = Gtk.EventControllerKey()
         key_ctl.connect("key-pressed", self._on_key)
         self.add_controller(key_ctl)
+        self.seg_buttons["fijar"].set_active(True)
         self._mark_selected()
         self._refresh_caption()
         self._refresh_status()
@@ -682,10 +631,6 @@ class MesaWindow(Adw.ApplicationWindow):
         for k, b in self.seg_buttons.items():
             if k != key:
                 b.set_active(False)
-        btn.add_css_class("suggested")
-        for k, b in self.seg_buttons.items():
-            if k != key:
-                b.remove_css_class("suggested")
         if key == "fijar":
             self.preview_mode = "fijar"
             self._run_stop()
@@ -727,17 +672,6 @@ class MesaWindow(Adw.ApplicationWindow):
                 log_exc("preferencias")
             return
         self.open_preferences()
-
-    def _on_theme(self, btn, mode):
-        if not btn.get_active():
-            return
-        for k, b in self.theme_buttons.items():
-            if k != mode:
-                b.set_active(False)
-        try:
-            set_theme(mode)
-        except Exception:
-            log_exc("aplicar tema")
 
     def _on_key(self, _ctl, keyval, _keycode, state):
         if state & Gdk.ModifierType.CONTROL_MASK:
@@ -888,6 +822,11 @@ class MesaWindow(Adw.ApplicationWindow):
         return False
 
     def _on_close(self, _widget):
+        if self._hide_on_close:
+            # Ventana hija de la bandeja: el botón X la oculta; el proceso
+            # sigue vivo para reaparecer al instante.
+            self.set_visible(False)
+            return True
         try:
             self._client.stop_animation()
         except Exception:
