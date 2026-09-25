@@ -73,7 +73,9 @@ jobs:
             echo "sin cambios: el release ya está en camino"
             exit 0
           fi
-          git commit -m "chore(release): prepara v$NEW [skip ci]"
+          # Sin [skip ci]: la rama del release necesita checks para que el
+          # auto-merge del PR pueda completarse (la protección los exige).
+          git commit -m "chore(release): prepara v$NEW"
           BRANCH="chore/release-v$NEW"
           git tag "v$NEW"
           git push origin "HEAD:$BRANCH" --tags
