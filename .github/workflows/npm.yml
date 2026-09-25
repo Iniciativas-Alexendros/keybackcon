@@ -7,6 +7,9 @@ on:
   push:
     tags:
       - "v*"
+  # Versionado lo dispara con workflow_dispatch tras crear el tag (un push
+  # con GITHUB_TOKEN no encadenaría workflows) y permite reintentos a mano.
+  workflow_dispatch:
 
 permissions:
   contents: read
