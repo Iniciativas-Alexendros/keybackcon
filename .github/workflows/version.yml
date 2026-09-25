@@ -77,9 +77,12 @@ jobs:
           BRANCH="chore/release-v$NEW"
           git tag "v$NEW"
           git push origin "HEAD:$BRANCH" --tags
-          gh pr create --base main --head "$BRANCH" \
+          # gh pr merge sin argumentos resuelve la rama del checkout (main),
+          # no el PR recién creado: hay que pasarle el número explícito.
+          PR_URL="$(gh pr create --base main --head "$BRANCH" \
             --title "chore(release): v$NEW" \
-            --body "Sincroniza Cargo.toml, gui/__init__.py y packaging/aur/PKGBUILD a v$NEW. El tag v$NEW dispara Release y NPM."
-          gh pr merge --auto --squash --delete-branch
+            --body "Sincroniza Cargo.toml, gui/__init__.py y packaging/aur/PKGBUILD a v$NEW. El tag v$NEW dispara Release y NPM.")"
+          PR_NUM="${PR_URL##*/}"
+          gh pr merge "$PR_NUM" --auto --squash --delete-branch
           gh workflow run Release --ref "v$NEW"
           gh workflow run NPM --ref "v$NEW"
