@@ -6,7 +6,8 @@ Checklist ejecutable (en orden):
 - [ ] `cargo clippy --all-targets -- -D warnings`
 - [ ] `cargo fmt --check`
 - [ ] `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`
-- [ ] `./scripts/smoke.sh` — binario + GUI + packaging
+- [ ] `python3 -m unittest discover -s gui/tests` — 47 tests de la GUI (sin display ni hardware)
+- [ ] `./scripts/smoke.sh` — binario + GUI + packaging + tests unitarios
 - [ ] `python3 -m py_compile gui/*.py`
 - [ ] `./scripts/install.sh` — instala en ~/.local + udev (sudo) + unidades de usuario
 
@@ -27,6 +28,14 @@ el estado con `keybackcon info --json` y restaúralo al terminar con
 
 ## Calidad
 
+- **Tests de la GUI** (`gui/tests/`, `unittest` de stdlib): `python3 -m
+  unittest discover -s gui/tests`. Cubren `client` (con un binario fake en un
+  directorio ejecutable — ojo: algunos `/tmp` son `noexec`), `colors`,
+  `theme` (vía archivo, con GSettings aislado), `i18n`, `compat` (detección
+  de distro con `/etc/os-release` emulado) y los helpers de la bandeja. Los
+  tests de bandeja hacen skip si Gtk3/Ayatana faltan o si Gtk4 ya está
+  cargado en el proceso (incompatibilidad GTK3/GTK4 documentada); en ese
+  caso corren aislados: `python3 -m unittest gui.tests.test_tray_helpers`.
 - **Lints**: `Cargo.toml` activa `missing_docs` y el grupo
   `clippy::pedantic`; deben quedar limpios con
   `cargo clippy --all-targets -- -D warnings` (incluidos ejemplos y tests)

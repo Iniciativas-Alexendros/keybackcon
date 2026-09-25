@@ -109,6 +109,11 @@ de/Salir; sincroniza su estado leyendo state/pidfile cada 2 s y lanza la
 ventana como subproceso trackeado que mata y reaped al salir. El cierre es
 limpio (sin `os._exit`), así `client.stop()` siempre se ejecuta.
 
+La GUI tiene suite de tests unitarios en `gui/tests/` (cliente con binario
+fake, colores, tema, i18n, helpers de bandeja) y `gui/compat.py` detecta la
+distribución (`/etc/os-release`) para sugerir el comando de instalación de
+las dependencias en cada familia de paquetes (apt/pacman/dnf/zypper).
+
 ## Flujos
 
 | Flujo | Pasos |

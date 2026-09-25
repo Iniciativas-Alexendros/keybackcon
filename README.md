@@ -41,6 +41,26 @@ La mesa de luz vive también en la **bandeja del sistema**
 Cada release trae además el tarball `keybackcon-vX.Y.Z-linux-x86_64.tar.gz`,
 `SHA256SUMS` y SBOM CycloneDX.
 
+## Compatibilidad
+
+El CLI `keybackcon` es un binario sin dependencias (solo libc): funciona en
+cualquier Linux con systemd o sin él. La GUI (GTK4/Adwaita) y la bandeja
+(Ayatana) necesitan los paquetes de tu distro:
+
+| Distro | Instalación | Paquetes de la GUI/bandeja |
+|---|---|---|
+| Cualquiera (con Node) | `npm install -g keybackcon` | el postinstalador lo configura todo |
+| Debian/Ubuntu | `.deb` o `./scripts/install.sh` | `python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-ayatanaappindicator3-0.1 python3-cairo` |
+| Arch/Manjaro | AUR (`keybackcon`) | `python-gobject gtk4 libadwaita libayatana-appindicator python-cairo` |
+| Fedora | `./scripts/install.sh` o npm | `python3-gobject gtk4 libadwaita libayatana-appindicator-gtk3 python3-cairo` |
+| openSUSE | `./scripts/install.sh` o npm | `python3-gobject gtk4 libadwaita libayatana-appindicator3-1 python3-cairo` |
+
+`install.sh` y la propia GUI detectan la distro (vía `/etc/os-release`) y
+dicen el comando exacto cuando falta algo. En distros sin systemd la regla
+udev y el binario siguen funcionando; las unidades de usuario se omiten y la
+restauración al login puede hacerse con el autostart de la bandeja
+(Preferencias → Arranque automático).
+
 ## Uso
 
 | Comando | Efecto |

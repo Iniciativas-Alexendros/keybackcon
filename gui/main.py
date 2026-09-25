@@ -139,6 +139,17 @@ def _stop_client(client):
         log_exc("parar cliente")
 
 
+def _aviso_falta(que, exc, rol):
+    """Mensaje claro (sin traceback) con el comando de instalación de la distro."""
+    print(f"keybackcon-gui: hace falta {que}.", file=sys.stderr)
+    try:
+        sugerencia = load("compat").sugerencia_instalacion(rol)
+        print(f"  instala: {sugerencia}", file=sys.stderr)
+    except Exception:
+        log_exc("sugerencia de paquetes")
+    print(f"  ({exc})", file=sys.stderr)
+
+
 def _llamar_control(metodo):
     """Llama a la ventana viva por D-Bus. Devuelve True si respondió;
     False si no hay ventana (o no respondió), en cuyo caso toca lanzarla."""
@@ -163,11 +174,15 @@ def _llamar_control(metodo):
 
 
 def _run_window(open_preferences=False, hide_on_close=False):
-    import gi
+    try:
+        import gi
 
-    gi.require_version("Gtk", "4.0")
-    gi.require_version("Adw", "1")
-    from gi.repository import Adw, GLib, Gio
+        gi.require_version("Gtk", "4.0")
+        gi.require_version("Adw", "1")
+        from gi.repository import Adw, GLib, Gio
+    except Exception as exc:
+        _aviso_falta("GTK4/libadwaita (python3-gi)", exc, "gui")
+        return 1
 
     MesaWindow = _load_window()
     app = Adw.Application(application_id=APP_ID)
@@ -253,6 +268,11 @@ def _run_tray():
     except Exception as exc:
         print("Aviso: bandeja no disponible (%s); abriendo ventana." % exc,
               file=sys.stderr)
+        try:
+            print("  instala: %s" % load("compat").sugerencia_instalacion("bandeja"),
+                  file=sys.stderr)
+        except Exception:
+            log_exc("sugerencia de bandeja")
         return _run_window()
     client = _load_client()
     return _run_tray_only(client, TrayIndicator)
@@ -262,10 +282,16 @@ def _run_tray_only(client, TrayIndicator):
     import atexit
     import subprocess
 
-    import gi
+    try:
+        import gi
 
-    gi.require_version("Gtk", "3.0")
-    from gi.repository import Gtk, GLib
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk, GLib
+    except Exception as exc:
+        _aviso_falta("GTK3 para la bandeja", exc, "bandeja")
+        print("keybackcon-gui: abriendo la ventana en su lugar.",
+              file=sys.stderr)
+        return _run_window()
 
     here = os.path.dirname(os.path.abspath(__file__))
     ventanas = []

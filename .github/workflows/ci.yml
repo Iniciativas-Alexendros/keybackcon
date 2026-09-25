@@ -29,6 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m py_compile gui/*.py
+      - run: python3 -m unittest discover -s gui/tests
       - run: bash scripts/smoke.sh
       - name: shellcheck
         run: |
