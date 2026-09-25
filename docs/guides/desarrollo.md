@@ -54,9 +54,11 @@ La versión canónica vive en `Cargo.toml` y está espejada en
 workflow `.github/workflows/version.yml` las sincroniza automáticamente en
 cada push a `main`: calcula el bump con `git-cliff --bumped-version` desde
 los commits convencionales desde el último tag y, si hay bump, actualiza las
-tres fuentes y crea el commit `chore(release)` y el tag `vX.Y.Z` (que
-dispara `release.yml`). El workflow de release verifica que el tag coincida
-con las tres fuentes.
+tres fuentes, abre un PR de release en auto-merge y crea el commit
+`chore(release)` y el tag `vX.Y.Z`; el workflow dispara entonces Release y
+NPM con `workflow_dispatch` (un push hecho con `GITHUB_TOKEN` no encadenaría
+workflows). El workflow de release verifica que el tag coincida con las tres
+fuentes. Los commits `chore` no bumpan (`skip` en `cliff.toml`).
 
 ## Empaquetado y release
 
