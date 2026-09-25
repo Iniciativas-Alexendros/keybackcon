@@ -3,9 +3,23 @@
 La fuente de verdad son los tags y `git-cliff`. Resumen:
 
 ## [Unreleased]
-- Alineación al canon P0+P1+P2: jobs CI `quality`/`test`/`build`/`smoke`,
-  docs en `docs/architecture|guides|runbooks`, Renovate y contratos de raíz.
-  `LICENSE` y `release.yml` intactos.
+
+## [2.3.0] — 2026-09-25
+- Núcleo: parada de animación sin bloqueos (reap de zombies, semántica de
+  stop unificada), estado persistente atómico, validación estricta de
+  argumentos, `info --json` estable para la GUI y cap de FPS a 60.
+- GUI: ventana Adwaita reestructurada (grupos Movimiento/Brillo/Color,
+  píldora de estado), apertura instantánea desde la bandeja vía control
+  D-Bus y bandeja rediseñada con cierre limpio.
+- Calidad: 33 tests Rust y 47 tests unitarios de la GUI (`gui/tests/`),
+  integrados en `smoke.sh` y CI; `gui/compat.py` con preflight
+  multi-distribución (apt/pacman/dnf/zypper).
+- Packaging: `ExecStopPost=keybackcon stop`, `Restart=on-failure` en la
+  unidad de restauración e `install.sh` respeta la unidad desactivada.
+- CI/CD: autoversionado con git-cliff (bump desde commits convencionales,
+  PR de release en auto-merge y tag), publicación npm (`keybackcon` +
+  `@keybackcon/linux-x64`/`linux-arm64`) y org migrada a
+  Soluciones-Alexendros.
 
 ## [2.2.1] — 2026-09-24
 - Unidades systemd del paquete apuntan a `/usr/bin/keybackcon` (restore al
